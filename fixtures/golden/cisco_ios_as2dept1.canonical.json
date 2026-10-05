@@ -1,0 +1,1015 @@
+{
+  "canonical_schema_version": "1.0.0",
+  "device": {
+    "hostname": {
+      "value": "as2dept1",
+      "state": "mapped",
+      "evidence": {
+        "line": 7,
+        "mapping_id": "cisco_ios.fact.hostname",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "vendor": {
+      "value": "cisco",
+      "state": "mapped",
+      "evidence": {
+        "line": 3,
+        "mapping_id": "cisco_ios.detect",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "os_family": {
+      "value": "ios",
+      "state": "mapped",
+      "evidence": {
+        "line": 3,
+        "mapping_id": "cisco_ios.detect",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "os_version": {
+      "value": "15.2",
+      "state": "mapped",
+      "evidence": {
+        "line": 3,
+        "mapping_id": "cisco_ios.fact.os_version",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "model": {
+      "value": null,
+      "state": "unknown",
+      "evidence": null
+    },
+    "serial": {
+      "value": null,
+      "state": "unknown",
+      "evidence": null
+    }
+  },
+  "services": {
+    "ssh": {
+      "enabled": {
+        "value": null,
+        "state": "unknown",
+        "evidence": null
+      },
+      "version": {
+        "value": null,
+        "state": "unknown",
+        "evidence": null
+      },
+      "timeout": {
+        "value": 120,
+        "state": "defaulted",
+        "evidence": {
+          "line": null,
+          "mapping_id": "ios.ssh.timeout",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      },
+      "max_auth_tries": {
+        "value": 3,
+        "state": "defaulted",
+        "evidence": {
+          "line": null,
+          "mapping_id": "ios.ssh.auth_retries",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      }
+    },
+    "telnet": {
+      "enabled": {
+        "value": null,
+        "state": "unknown",
+        "evidence": null
+      }
+    },
+    "http": {
+      "enabled": {
+        "value": false,
+        "state": "mapped",
+        "evidence": {
+          "line": 107,
+          "mapping_id": "ios.http.off",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      }
+    },
+    "https": {
+      "enabled": {
+        "value": false,
+        "state": "mapped",
+        "evidence": {
+          "line": 108,
+          "mapping_id": "ios.https.off",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      }
+    }
+  },
+  "auth": {
+    "aaa": {
+      "enabled": {
+        "value": false,
+        "state": "mapped",
+        "evidence": {
+          "line": 14,
+          "mapping_id": "ios.aaa.off",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      }
+    },
+    "enable_secret": {
+      "algorithm": {
+        "value": "none",
+        "state": "defaulted",
+        "evidence": {
+          "line": null,
+          "mapping_id": "ios.enable_secret.typed",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      }
+    },
+    "password_min_length": {
+      "value": 0,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.password_min_length",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "login_banner": {
+      "present": {
+        "value": false,
+        "state": "defaulted",
+        "evidence": {
+          "line": null,
+          "mapping_id": "ios.login_banner",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      }
+    },
+    "local_users": {
+      "state": "mapped",
+      "evidence": null,
+      "items": []
+    }
+  },
+  "session": {
+    "idle_timeout": {
+      "value": null,
+      "state": "unknown",
+      "evidence": null
+    }
+  },
+  "logging": {
+    "enabled": {
+      "value": true,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.logging.on",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "level": {
+      "value": 6,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.logging.trap",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "buffered_enabled": {
+      "value": null,
+      "state": "unknown",
+      "evidence": null
+    },
+    "servers": {
+      "state": "mapped",
+      "evidence": null,
+      "items": []
+    }
+  },
+  "ntp": {
+    "authenticate": {
+      "value": false,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.ntp.authenticate",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "servers": {
+      "state": "mapped",
+      "evidence": null,
+      "items": []
+    }
+  },
+  "snmp": {
+    "version": {
+      "value": null,
+      "state": "unknown",
+      "evidence": null
+    },
+    "traps_enabled": {
+      "value": false,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.snmp.traps",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "communities": {
+      "state": "mapped",
+      "evidence": null,
+      "items": []
+    }
+  },
+  "interfaces": {
+    "state": "mapped",
+    "evidence": null,
+    "items": [
+      {
+        "name": {
+          "value": "Loopback0",
+          "state": "mapped",
+          "evidence": {
+            "line": 51,
+            "mapping_id": "ios.intf",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "shutdown": {
+          "value": false,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.shutdown",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "description": {
+          "value": null,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.description",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "proxy_arp": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.proxy_arp.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "ip_redirects": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.redirects.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "unreachables": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.unreachables.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "switchport_mode": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        },
+        "access_vlan": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        }
+      },
+      {
+        "name": {
+          "value": "Ethernet0/0",
+          "state": "mapped",
+          "evidence": {
+            "line": 54,
+            "mapping_id": "ios.intf",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "shutdown": {
+          "value": true,
+          "state": "mapped",
+          "evidence": {
+            "line": 56,
+            "mapping_id": "ios.intf.shutdown",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "description": {
+          "value": null,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.description",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "proxy_arp": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.proxy_arp.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "ip_redirects": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.redirects.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "unreachables": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.unreachables.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "switchport_mode": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        },
+        "access_vlan": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        }
+      },
+      {
+        "name": {
+          "value": "GigabitEthernet0/0",
+          "state": "mapped",
+          "evidence": {
+            "line": 59,
+            "mapping_id": "ios.intf",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "shutdown": {
+          "value": false,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.shutdown",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "description": {
+          "value": null,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.description",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "proxy_arp": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.proxy_arp.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "ip_redirects": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.redirects.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "unreachables": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.unreachables.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "switchport_mode": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        },
+        "access_vlan": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        }
+      },
+      {
+        "name": {
+          "value": "GigabitEthernet1/0",
+          "state": "mapped",
+          "evidence": {
+            "line": 66,
+            "mapping_id": "ios.intf",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "shutdown": {
+          "value": false,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.shutdown",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "description": {
+          "value": null,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.description",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "proxy_arp": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.proxy_arp.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "ip_redirects": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.redirects.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "unreachables": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.unreachables.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "switchport_mode": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        },
+        "access_vlan": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        }
+      },
+      {
+        "name": {
+          "value": "GigabitEthernet2/0",
+          "state": "mapped",
+          "evidence": {
+            "line": 70,
+            "mapping_id": "ios.intf",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "shutdown": {
+          "value": false,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.shutdown",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "description": {
+          "value": null,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.description",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "proxy_arp": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.proxy_arp.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "ip_redirects": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.redirects.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "unreachables": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.unreachables.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "switchport_mode": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        },
+        "access_vlan": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        }
+      },
+      {
+        "name": {
+          "value": "GigabitEthernet3/0",
+          "state": "mapped",
+          "evidence": {
+            "line": 75,
+            "mapping_id": "ios.intf",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "shutdown": {
+          "value": false,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.shutdown",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "description": {
+          "value": null,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.description",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "proxy_arp": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.proxy_arp.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "ip_redirects": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.redirects.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "unreachables": {
+          "value": true,
+          "state": "defaulted",
+          "evidence": {
+            "line": null,
+            "mapping_id": "ios.intf.unreachables.on",
+            "pack_version": "cisco_ios@1.0.0"
+          }
+        },
+        "switchport_mode": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        },
+        "access_vlan": {
+          "value": null,
+          "state": "unknown",
+          "evidence": null
+        }
+      }
+    ]
+  },
+  "mgmt": {
+    "vty_lines": {
+      "state": "mapped",
+      "evidence": null,
+      "items": [
+        {
+          "name": {
+            "value": "vty 0 4",
+            "state": "mapped",
+            "evidence": {
+              "line": 150,
+              "mapping_id": "ios.vty",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          },
+          "transport_input": {
+            "value": null,
+            "state": "unknown",
+            "evidence": null
+          },
+          "access_class": {
+            "value": null,
+            "state": "defaulted",
+            "evidence": {
+              "line": null,
+              "mapping_id": "ios.vty.access_class",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          },
+          "exec_timeout": {
+            "value": 600,
+            "state": "defaulted",
+            "evidence": {
+              "line": null,
+              "mapping_id": "ios.vty.exec_timeout",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "acl": {
+    "lists": {
+      "state": "mapped",
+      "evidence": null,
+      "items": [
+        {
+          "name": {
+            "value": "RESTRICT_HOST_TRAFFIC_IN",
+            "state": "mapped",
+            "evidence": {
+              "line": 110,
+              "mapping_id": "ios.acl.named",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          },
+          "entries": {
+            "state": "mapped",
+            "evidence": null,
+            "items": [
+              {
+                "seq": {
+                  "value": 10,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 111,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 20,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "deny",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 112,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 30,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 113,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": {
+            "value": "RESTRICT_HOST_TRAFFIC_OUT",
+            "state": "mapped",
+            "evidence": {
+              "line": 114,
+              "mapping_id": "ios.acl.named",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          },
+          "entries": {
+            "state": "mapped",
+            "evidence": null,
+            "items": [
+              {
+                "seq": {
+                  "value": 10,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 115,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 20,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "deny",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 116,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 30,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "deny",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 117,
+                    "mapping_id": "ios.acl.named.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": {
+            "value": "102",
+            "state": "mapped",
+            "evidence": {
+              "line": 119,
+              "mapping_id": "ios.acl.numbered.entry",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          },
+          "entries": {
+            "state": "mapped",
+            "evidence": null,
+            "items": [
+              {
+                "seq": {
+                  "value": 10,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 119,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 20,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 120,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": {
+            "value": "105",
+            "state": "mapped",
+            "evidence": {
+              "line": 121,
+              "mapping_id": "ios.acl.numbered.entry",
+              "pack_version": "cisco_ios@1.0.0"
+            }
+          },
+          "entries": {
+            "state": "mapped",
+            "evidence": null,
+            "items": [
+              {
+                "seq": {
+                  "value": 10,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 121,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 20,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 122,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 30,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 123,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              },
+              {
+                "seq": {
+                  "value": 40,
+                  "state": "defaulted",
+                  "evidence": {
+                    "line": null,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                },
+                "action": {
+                  "value": "permit",
+                  "state": "mapped",
+                  "evidence": {
+                    "line": 124,
+                    "mapping_id": "ios.acl.numbered.entry",
+                    "pack_version": "cisco_ios@1.0.0"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "discovery": {
+    "cdp_enabled": {
+      "value": true,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.cdp.on",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    },
+    "lldp_enabled": {
+      "value": false,
+      "state": "defaulted",
+      "evidence": {
+        "line": null,
+        "mapping_id": "ios.lldp.on",
+        "pack_version": "cisco_ios@1.0.0"
+      }
+    }
+  }
+}
