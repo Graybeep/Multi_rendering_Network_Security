@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0.0",
+  "device": {
+    "hostname":   {"value": null, "state": "unknown", "evidence": null},
+    "vendor":     {"value": "cisco_ios", "state": "mapped", "evidence": {"line": 1, "mapping_id": "cisco_ios.detect", "pack_version": "cisco_ios@1.0.0"}},
+    "os_family":  {"value": null, "state": "unknown", "evidence": null},
+    "os_version": {"value": "15.2", "state": "mapped", "evidence": {"line": 3, "mapping_id": "cisco_ios.facts.os_version", "pack_version": "cisco_ios@1.0.0"}},
+    "model":      {"value": null, "state": "unknown", "evidence": null},
+    "serial":     {"value": null, "state": "unknown", "evidence": null}
+  },
+  "services": {
+    "ssh": {
+      "enabled":        {"value": null, "state": "unknown", "evidence": null},
+      "version":        {"value": 2, "state": "mapped", "evidence": {"line": 10, "mapping_id": "ios.ssh.version", "pack_version": "cisco_ios@1.0.0"}},
+      "timeout":        {"value": null, "state": "unknown", "evidence": null},
+      "max_auth_tries": {"value": null, "state": "unknown", "evidence": null}
+    },
+    "telnet": {"enabled": {"value": null, "state": "unknown", "evidence": null}},
+    "http":   {"enabled": {"value": null, "state": "unknown", "evidence": null}},
+    "https":  {"enabled": {"value": null, "state": "unknown", "evidence": null}}
+  },
+  "auth": {
+    "aaa":                 {"enabled": {"value": null, "state": "unknown", "evidence": null}},
+    "enable_secret":       {"algorithm": {"value": null, "state": "unknown", "evidence": null}},
+    "password_min_length": {"value": null, "state": "unknown", "evidence": null},
+    "login_banner":        {"present": {"value": null, "state": "unknown", "evidence": null}},
+    "local_users":         {"state": "unknown", "evidence": null, "items": []}
+  },
+  "session": {
+    "idle_timeout": {"value": null, "state": "unknown", "evidence": null}
+  },
+  "logging": {
+    "enabled":          {"value": null, "state": "unknown", "evidence": null},
+    "level":            {"value": null, "state": "unknown", "evidence": null},
+    "buffered_enabled": {"value": null, "state": "unknown", "evidence": null},
+    "servers":          {"state": "unknown", "evidence": null, "items": []}
+  },
+  "ntp": {
+    "authenticate": {"value": null, "state": "unknown", "evidence": null},
+    "servers":      {"state": "unknown", "evidence": null, "items": []}
+  },
+  "snmp": {
+    "version":       {"value": null, "state": "unknown", "evidence": null},
+    "traps_enabled": {"value": null, "state": "unknown", "evidence": null},
+    "communities":   {"state": "unknown", "evidence": null, "items": []}
+  },
+  "interfaces": {
+    "state": "mapped",
+    "evidence": {"line": 5, "mapping_id": "ios.intf.proxy_arp", "pack_version": "cisco_ios@1.0.0"},
+    "items": [
+      {
+        "name":            {"value": "GigabitEthernet0/1", "state": "mapped", "evidence": {"line": 5, "mapping_id": "ios.intf.proxy_arp", "pack_version": "cisco_ios@1.0.0"}},
+        "shutdown":        {"value": null, "state": "unknown", "evidence": null},
+        "description":     {"value": null, "state": "unknown", "evidence": null},
+        "proxy_arp":       {"value": true, "state": "mapped", "evidence": {"line": 6, "mapping_id": "ios.intf.proxy_arp", "pack_version": "cisco_ios@1.0.0"}},
+        "ip_redirects":    {"value": null, "state": "unknown", "evidence": null},
+        "unreachables":    {"value": null, "state": "unknown", "evidence": null},
+        "switchport_mode": {"value": null, "state": "unknown", "evidence": null},
+        "access_vlan":     {"value": null, "state": "unknown", "evidence": null}
+      },
+      {
+        "name":            {"value": "GigabitEthernet0/2", "state": "mapped", "evidence": {"line": 8, "mapping_id": "ios.intf.proxy_arp", "pack_version": "cisco_ios@1.0.0"}},
+        "shutdown":        {"value": null, "state": "unknown", "evidence": null},
+        "description":     {"value": null, "state": "unknown", "evidence": null},
+        "proxy_arp":       {"value": false, "state": "defaulted", "evidence": {"line": null, "mapping_id": "ios.intf.proxy_arp", "pack_version": "cisco_ios@1.0.0"}},
+        "ip_redirects":    {"value": null, "state": "unknown", "evidence": null},
+        "unreachables":    {"value": null, "state": "unknown", "evidence": null},
+        "switchport_mode": {"value": null, "state": "unknown", "evidence": null},
+        "access_vlan":     {"value": null, "state": "unknown", "evidence": null}
+      }
+    ]
+  },
+  "mgmt": {
+    "vty_lines": {"state": "unknown", "evidence": null, "items": []}
+  },
+  "acl": {
+    "lists": {"state": "unknown", "evidence": null, "items": []}
+  },
+  "discovery": {
+    "cdp_enabled":  {"value": null, "state": "unknown", "evidence": null},
+    "lldp_enabled": {"value": null, "state": "unknown", "evidence": null}
+  }
+}

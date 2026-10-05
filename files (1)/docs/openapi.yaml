@@ -1,0 +1,713 @@
+openapi: 3.1.0
+info:
+  title: Wi-fight Network Config Compliance Auditor — local API
+  version: 0.1.0
+  description: |
+    Local desktop API. Served only on 127.0.0.1 by the FastAPI process that also
+    serves the SPA. Authoritative contract for the frontend (Codex mocks it with
+    `make mock`, Prism on :8001).
+
+    Examples are derived from `fixtures/golden/cisco_ios_minimal.cfg`. They are
+    mock data for UI development only. They must never be used in a report,
+    screenshot or slide.
+
+    Verdicts are three-state: PASS | FAIL | NOT_DETERMINED. The UI must render
+    NOT_DETERMINED distinctly from FAIL.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Real backend (make api)
+  - url: http://127.0.0.1:8001
+    description: Prism mock (make mock)
+
+tags:
+  - name: scans
+  - name: learning
+  - name: catalog
+
+paths:
+  /api/scans:
+    post:
+      tags: [scans]
+      operationId: createScan
+      summary: Upload a batch of configuration files and start a scan
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files, framework]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  items: {type: string, format: binary}
+                  description: One configuration file per device. Raw text is redacted at ingest and never logged.
+                framework:
+                  $ref: '#/components/schemas/Framework'
+            encoding:
+              files:
+                contentType: text/plain, application/octet-stream
+      responses:
+        '202':
+          description: Scan accepted; device jobs queued.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScanCreated'}
+              example:
+                scan_id: scn_01J9ZK4Q8M3T
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/scans/{scan_id}:
+    parameters:
+      - $ref: '#/components/parameters/ScanId'
+    get:
+      tags: [scans]
+      operationId: getScan
+      summary: Scan status, progress and device list
+      responses:
+        '200':
+          description: Current scan state. Poll until status is completed or failed.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Scan'}
+              examples:
+                completed:
+                  summary: Finished scan of the golden fixture
+                  value:
+                    scan_id: scn_01J9ZK4Q8M3T
+                    framework: cis
+                    status: completed
+                    created_at: '2026-10-05T09:14:02Z'
+                    finished_at: '2026-10-05T09:14:03Z'
+                    progress: {total: 1, done: 1, failed: 0}
+                    devices:
+                      - device_id: dev_01J9ZK4QA7N2
+                        filename: cisco_ios_minimal.cfg
+                        hostname: null
+                        vendor: cisco_ios
+                        status: completed
+                        error: null
+                        counts: {pass: 1, fail: 0, not_determined: 0}
+                running:
+                  summary: Scan in progress, one device still parsing
+                  value:
+                    scan_id: scn_01J9ZK4Q8M3T
+                    framework: cis
+                    status: running
+                    created_at: '2026-10-05T09:14:02Z'
+                    finished_at: null
+                    progress: {total: 2, done: 1, failed: 0}
+                    devices:
+                      - device_id: dev_01J9ZK4QA7N2
+                        filename: cisco_ios_minimal.cfg
+                        hostname: null
+                        vendor: cisco_ios
+                        status: completed
+                        error: null
+                        counts: {pass: 1, fail: 0, not_determined: 0}
+                      - device_id: dev_01J9ZK4QB1X8
+                        filename: core-sw-02.cfg
+                        hostname: null
+                        vendor: null
+                        status: running
+                        error: null
+                        counts: {pass: 0, fail: 0, not_determined: 0}
+                device_failed:
+                  summary: One file could not be parsed; the batch still completes
+                  value:
+                    scan_id: scn_01J9ZK4Q8M3T
+                    framework: cis
+                    status: completed
+                    created_at: '2026-10-05T09:14:02Z'
+                    finished_at: '2026-10-05T09:14:04Z'
+                    progress: {total: 2, done: 1, failed: 1}
+                    devices:
+                      - device_id: dev_01J9ZK4QA7N2
+                        filename: cisco_ios_minimal.cfg
+                        hostname: null
+                        vendor: cisco_ios
+                        status: completed
+                        error: null
+                        counts: {pass: 1, fail: 0, not_determined: 0}
+                      - device_id: dev_01J9ZK4QB1X8
+                        filename: unknown.bin
+                        hostname: null
+                        vendor: null
+                        status: failed
+                        error: {code: no_vendor_detected, message: No installed vendor pack matched this file.}
+                        counts: {pass: 0, fail: 0, not_determined: 0}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/scans/{scan_id}/devices/{device_id}:
+    parameters:
+      - $ref: '#/components/parameters/ScanId'
+      - $ref: '#/components/parameters/DeviceId'
+    get:
+      tags: [scans]
+      operationId: getDeviceResult
+      summary: Findings for one device, each with cited evidence and remediation
+      responses:
+        '200':
+          description: Per-device result.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeviceResult'}
+              examples:
+                pass:
+                  summary: SSH v2 configured (golden fixture)
+                  value:
+                    scan_id: scn_01J9ZK4Q8M3T
+                    device_id: dev_01J9ZK4QA7N2
+                    filename: cisco_ios_minimal.cfg
+                    config_sha256: null
+                    identification:
+                      hostname: null
+                      vendor: cisco_ios
+                      os_family: null
+                      os_version: '15.2'
+                      model: null
+                      serial: null
+                    pack_versions: [cisco_ios@1.0.0, cis@1.0.0]
+                    coverage: {lines_total: 12, lines_mapped: 4, lines_unmapped: 0}
+                    findings:
+                      - rule_id: CIS-NET-1.2.3
+                        framework: cis
+                        title: SSH protocol version 2 is required
+                        severity: high
+                        verdict: PASS
+                        reason: null
+                        evidence:
+                          - canonical_field: services.ssh.version
+                            line: 10
+                            text: ip ssh version 2
+                            mapping_id: ios.ssh.version
+                            pack_version: cisco_ios@1.0.0
+                            state: mapped
+                        remediation: null
+                fail:
+                  summary: SSH v1 configured
+                  value:
+                    scan_id: scn_01J9ZK4Q8M3T
+                    device_id: dev_01J9ZK4QA7N2
+                    filename: cisco_ios_minimal.cfg
+                    config_sha256: null
+                    identification: {hostname: null, vendor: cisco_ios, os_family: null, os_version: '15.2', model: null, serial: null}
+                    pack_versions: [cisco_ios@1.0.0, cis@1.0.0]
+                    coverage: {lines_total: 12, lines_mapped: 4, lines_unmapped: 0}
+                    findings:
+                      - rule_id: CIS-NET-1.2.3
+                        framework: cis
+                        title: SSH protocol version 2 is required
+                        severity: high
+                        verdict: FAIL
+                        reason: null
+                        evidence:
+                          - canonical_field: services.ssh.version
+                            line: 10
+                            text: ip ssh version 1
+                            mapping_id: ios.ssh.version
+                            pack_version: cisco_ios@1.0.0
+                            state: mapped
+                        remediation:
+                          fix_id: fix_ssh_v2
+                          commands: [configure terminal, ip ssh version 2, end, write memory]
+                          reload_required: false
+                          rollback: [configure terminal, ip ssh version 1, end]
+                not_determined:
+                  summary: ip ssh version line absent and pack declares absent=unknown
+                  value:
+                    scan_id: scn_01J9ZK4Q8M3T
+                    device_id: dev_01J9ZK4QA7N2
+                    filename: cisco_ios_minimal.cfg
+                    config_sha256: null
+                    identification: {hostname: null, vendor: cisco_ios, os_family: null, os_version: '15.2', model: null, serial: null}
+                    pack_versions: [cisco_ios@1.0.0, cis@1.0.0]
+                    coverage: {lines_total: 11, lines_mapped: 3, lines_unmapped: 0}
+                    findings:
+                      - rule_id: CIS-NET-1.2.3
+                        framework: cis
+                        title: SSH protocol version 2 is required
+                        severity: high
+                        verdict: NOT_DETERMINED
+                        reason: {code: required_field_unknown, fields: [services.ssh.version]}
+                        evidence: []
+                        remediation: null
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/scans/{scan_id}/devices/{device_id}/report:
+    parameters:
+      - $ref: '#/components/parameters/ScanId'
+      - $ref: '#/components/parameters/DeviceId'
+    get:
+      tags: [scans]
+      operationId: getDeviceReport
+      summary: Per-device PDF report
+      responses:
+        '200':
+          description: PDF with identification, findings by severity, cited lines and remediation.
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+              example: attachment; filename="cisco_ios_minimal.pdf"
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Device not finished yet, or it failed to parse.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+              example: {code: device_not_ready, message: Device result is not available yet.}
+
+  /api/scans/{scan_id}/clusters:
+    parameters:
+      - $ref: '#/components/parameters/ScanId'
+    get:
+      tags: [learning]
+      operationId: listClusters
+      summary: Unmatched-line clusters for this scan, sorted by device count descending
+      responses:
+        '200':
+          description: One entry per normalised template signature. Templates contain typed placeholders, never raw identifiers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Cluster'}
+              examples:
+                some:
+                  value:
+                    - cluster_id: clu_7f3a9c2e
+                      vendor: cisco_ios
+                      signature: 7f3a9c2e41b0d5a8
+                      template: 'ip ssh time-out <INT>'
+                      scope: null
+                      device_count: 14
+                      line_count: 14
+                      status: open
+                    - cluster_id: clu_1b8e04d9
+                      vendor: cisco_ios
+                      signature: 1b8e04d97c26aa13
+                      template: 'no ip redirects'
+                      scope: 'interface <IFACE>'
+                      device_count: 9
+                      line_count: 31
+                      status: open
+                empty:
+                  summary: Every line matched a mapping
+                  value: []
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/clusters/{cluster_id}/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/ClusterId'
+    get:
+      tags: [learning]
+      operationId: getClusterSuggestions
+      summary: Ranked candidate canonical fields for a cluster
+      description: |
+        Advisory only. Ranks the cluster template against canonical field
+        descriptions. Nothing here is applied without a human calling confirm.
+      responses:
+        '200':
+          description: Candidates, highest score first.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SuggestionList'}
+              example:
+                cluster_id: clu_7f3a9c2e
+                template: 'ip ssh time-out <INT>'
+                suggestions:
+                  - canonical_field: services.ssh.timeout
+                    description: How many seconds an SSH client has to finish logging in before the server drops the connection.
+                    score: 0.82
+                    tier: lexical
+                  - canonical_field: session.idle_timeout
+                    description: How many seconds an inactive management session stays open before the device logs it out.
+                    score: 0.41
+                    tier: lexical
+                  - canonical_field: mgmt.vty_lines[].exec_timeout
+                    description: How many seconds an idle remote login on this line stays open before it is disconnected.
+                    score: 0.37
+                    tier: lexical
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/clusters/{cluster_id}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/ClusterId'
+    post:
+      tags: [learning]
+      operationId: confirmCluster
+      summary: Human confirms a mapping; writes packs/learned/<vendor>.yaml and reloads
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConfirmRequest'}
+            examples:
+              unknown_when_absent:
+                value: {canonical_field: services.ssh.timeout, absent: unknown, default: null}
+              default_when_absent:
+                value: {canonical_field: 'interfaces[].ip_redirects', absent: default, default: true}
+      responses:
+        '201':
+          description: Learned mapping written and registry reloaded; parse cache invalidated for affected scans.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConfirmResult'}
+              example:
+                mapping_id: learned.cisco_ios.clu_7f3a9c2e
+                canonical_field: services.ssh.timeout
+                pack: cisco_ios_learned
+                pack_version: cisco_ios_learned@1.0.1
+                path: packs/learned/cisco_ios.yaml
+                cluster_signature: 7f3a9c2e41b0d5a8
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Ambiguous overlap with an existing mapping, or cluster already confirmed.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+              example: {code: mapping_overlap, message: Pattern overlaps ios.ssh.version at equal priority.}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/scans/{scan_id}/reevaluate:
+    parameters:
+      - $ref: '#/components/parameters/ScanId'
+    post:
+      tags: [scans]
+      operationId: reevaluateScan
+      summary: Re-run mapping and evaluation from the parse cache with current packs
+      responses:
+        '202':
+          description: Re-evaluation queued. Poll GET /api/scans/{scan_id}.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScanCreated'}
+              example: {scan_id: scn_01J9ZK4Q8M3T}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Scan is still running.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+              example: {code: scan_running, message: Wait for the current run to finish.}
+
+  /api/schema/fields:
+    get:
+      tags: [catalog]
+      operationId: listSchemaFields
+      summary: Canonical fields and their plain-English descriptions
+      responses:
+        '200':
+          description: Flattened from schemas/canonical.schema.json.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/SchemaField'}
+              example:
+                - path: services.ssh.version
+                  type: integer
+                  collection: false
+                  description: Which SSH protocol version the server allows; version 1 is broken and only version 2 should be accepted.
+                - path: interfaces[].proxy_arp
+                  type: boolean
+                  collection: true
+                  description: Whether the port answers address-resolution requests on behalf of other hosts, which can let traffic bypass intended routing.
+
+  /api/packs:
+    get:
+      tags: [catalog]
+      operationId: listPacks
+      summary: Installed packs and versions
+      responses:
+        '200':
+          description: Every pack currently loaded by the registry.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: {$ref: '#/components/schemas/Pack'}
+              example:
+                - {id: cisco_ios, kind: vendor, version: 1.0.0, source: base, path: packs/vendors/cisco_ios.yaml, valid: true, error: null}
+                - {id: cis, kind: rules, version: 1.0.0, source: base, path: packs/rules/cis.yaml, valid: true, error: null}
+                - {id: cisco_ios, kind: fixes, version: 1.0.0, source: base, path: packs/fixes/cisco_ios.yaml, valid: true, error: null}
+
+components:
+  parameters:
+    ScanId:
+      name: scan_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^scn_[0-9A-Z]+$'}
+      example: scn_01J9ZK4Q8M3T
+    DeviceId:
+      name: device_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^dev_[0-9A-Z]+$'}
+      example: dev_01J9ZK4QA7N2
+    ClusterId:
+      name: cluster_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^clu_[0-9a-f]+$'}
+      example: clu_7f3a9c2e
+
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {code: no_files, message: At least one configuration file is required.}
+    NotFound:
+      description: Resource does not exist.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {code: not_found, message: Scan scn_01J9ZK4Q8M3T was not found.}
+    PayloadTooLarge:
+      description: Upload exceeds the configured size limit.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {code: payload_too_large, message: Upload exceeds the size limit.}
+    Unprocessable:
+      description: Request is well-formed but semantically invalid.
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+          example: {code: unknown_canonical_field, message: services.ssh.timeot is not a canonical field.}
+
+  schemas:
+    Framework:
+      type: string
+      enum: [cis, nist, stig, iso]
+
+    Verdict:
+      type: string
+      enum: [PASS, FAIL, NOT_DETERMINED]
+
+    Severity:
+      type: string
+      enum: [critical, high, medium, low, info]
+
+    FieldState:
+      type: string
+      enum: [mapped, defaulted, unknown]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+
+    ScanCreated:
+      type: object
+      required: [scan_id]
+      properties:
+        scan_id: {type: string}
+
+    Counts:
+      type: object
+      required: [pass, fail, not_determined]
+      properties:
+        pass: {type: integer, minimum: 0}
+        fail: {type: integer, minimum: 0}
+        not_determined: {type: integer, minimum: 0}
+
+    DeviceSummary:
+      type: object
+      required: [device_id, filename, hostname, vendor, status, error, counts]
+      properties:
+        device_id: {type: string}
+        filename: {type: string}
+        hostname: {type: [string, 'null']}
+        vendor: {type: [string, 'null'], description: Vendor pack id that detected this file; null until detected or if none matched.}
+        status: {type: string, enum: [queued, running, completed, failed]}
+        error:
+          oneOf:
+            - {type: 'null'}
+            - {$ref: '#/components/schemas/Error'}
+        counts: {$ref: '#/components/schemas/Counts'}
+
+    Scan:
+      type: object
+      required: [scan_id, framework, status, created_at, finished_at, progress, devices]
+      properties:
+        scan_id: {type: string}
+        framework: {$ref: '#/components/schemas/Framework'}
+        status: {type: string, enum: [queued, running, completed, failed]}
+        created_at: {type: string, format: date-time}
+        finished_at: {type: [string, 'null'], format: date-time}
+        progress:
+          type: object
+          required: [total, done, failed]
+          properties:
+            total: {type: integer, minimum: 0}
+            done: {type: integer, minimum: 0}
+            failed: {type: integer, minimum: 0}
+        devices:
+          type: array
+          items: {$ref: '#/components/schemas/DeviceSummary'}
+
+    Identification:
+      type: object
+      required: [hostname, vendor, os_family, os_version, model, serial]
+      properties:
+        hostname: {type: [string, 'null']}
+        vendor: {type: [string, 'null']}
+        os_family: {type: [string, 'null']}
+        os_version: {type: [string, 'null']}
+        model: {type: [string, 'null']}
+        serial: {type: [string, 'null']}
+
+    Evidence:
+      type: object
+      required: [canonical_field, line, text, mapping_id, pack_version, state]
+      properties:
+        canonical_field: {type: string}
+        line: {type: [integer, 'null'], description: Null when state is defaulted.}
+        text: {type: [string, 'null'], description: The cited config line after redaction. Secrets appear as ****; algorithm tokens are kept.}
+        mapping_id: {type: string}
+        pack_version: {type: string}
+        state: {$ref: '#/components/schemas/FieldState'}
+
+    Remediation:
+      type: object
+      required: [fix_id, commands, reload_required, rollback]
+      properties:
+        fix_id: {type: string}
+        commands: {type: array, items: {type: string}}
+        reload_required: {type: boolean}
+        rollback: {type: array, items: {type: string}}
+
+    Finding:
+      type: object
+      required: [rule_id, framework, title, severity, verdict, reason, evidence, remediation]
+      properties:
+        rule_id: {type: string}
+        framework: {$ref: '#/components/schemas/Framework'}
+        title: {type: string}
+        severity: {$ref: '#/components/schemas/Severity'}
+        verdict: {$ref: '#/components/schemas/Verdict'}
+        reason:
+          description: Set only for NOT_DETERMINED.
+          oneOf:
+            - {type: 'null'}
+            - type: object
+              required: [code, fields]
+              properties:
+                code: {type: string, enum: [required_field_unknown, collection_unknown, not_applicable]}
+                fields: {type: array, items: {type: string}}
+        evidence:
+          type: array
+          items: {$ref: '#/components/schemas/Evidence'}
+        remediation:
+          description: Set only for FAIL.
+          oneOf:
+            - {type: 'null'}
+            - {$ref: '#/components/schemas/Remediation'}
+
+    DeviceResult:
+      type: object
+      required: [scan_id, device_id, filename, config_sha256, identification, pack_versions, coverage, findings]
+      properties:
+        scan_id: {type: string}
+        device_id: {type: string}
+        filename: {type: string}
+        config_sha256: {type: [string, 'null'], pattern: '^[0-9a-f]{64}$'}
+        identification: {$ref: '#/components/schemas/Identification'}
+        pack_versions: {type: array, items: {type: string}}
+        coverage:
+          type: object
+          required: [lines_total, lines_mapped, lines_unmapped]
+          properties:
+            lines_total: {type: integer, minimum: 0}
+            lines_mapped: {type: integer, minimum: 0}
+            lines_unmapped: {type: integer, minimum: 0}
+        findings:
+          type: array
+          items: {$ref: '#/components/schemas/Finding'}
+
+    Cluster:
+      type: object
+      required: [cluster_id, vendor, signature, template, scope, device_count, line_count, status]
+      properties:
+        cluster_id: {type: string}
+        vendor: {type: string}
+        signature: {type: string, description: Hash of the normalised template.}
+        template: {type: string, description: 'Normalised line with typed placeholders (<IP>, <MAC>, <HOST>, <IFACE>, <STR>, <INT>).'}
+        scope: {type: [string, 'null'], description: 'Normalised enclosing block, if any.'}
+        device_count: {type: integer, minimum: 1}
+        line_count: {type: integer, minimum: 1}
+        status: {type: string, enum: [open, confirmed]}
+
+    Suggestion:
+      type: object
+      required: [canonical_field, description, score, tier]
+      properties:
+        canonical_field: {type: string}
+        description: {type: string}
+        score: {type: number, minimum: 0, maximum: 1}
+        tier: {type: string, enum: [lexical, embedding, llm]}
+
+    SuggestionList:
+      type: object
+      required: [cluster_id, template, suggestions]
+      properties:
+        cluster_id: {type: string}
+        template: {type: string}
+        suggestions:
+          type: array
+          items: {$ref: '#/components/schemas/Suggestion'}
+
+    ConfirmRequest:
+      type: object
+      required: [canonical_field, absent, default]
+      additionalProperties: false
+      properties:
+        canonical_field: {type: string}
+        absent: {type: string, enum: [unknown, default]}
+        default:
+          description: Required non-null when absent is default; must be null when absent is unknown.
+          type: [boolean, integer, string, 'null']
+
+    ConfirmResult:
+      type: object
+      required: [mapping_id, canonical_field, pack, pack_version, path, cluster_signature]
+      properties:
+        mapping_id: {type: string}
+        canonical_field: {type: string}
+        pack: {type: string}
+        pack_version: {type: string}
+        path: {type: string}
+        cluster_signature: {type: string}
+
+    SchemaField:
+      type: object
+      required: [path, type, collection, description]
+      properties:
+        path: {type: string}
+        type: {type: string, enum: [boolean, integer, string]}
+        collection: {type: boolean, description: 'True if the path passes through a list ([]).'}
+        description: {type: string}
+
+    Pack:
+      type: object
+      required: [id, kind, version, source, path, valid, error]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [vendor, rules, fixes, learned]}
+        version: {type: string}
+        source: {type: string, enum: [base, learned]}
+        path: {type: string}
+        valid: {type: boolean}
+        error: {type: [string, 'null'], description: Validation error naming the offending field when valid is false.}
