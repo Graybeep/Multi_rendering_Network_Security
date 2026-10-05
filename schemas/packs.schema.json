@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wi-fight.local/schemas/packs.schema.json",
+  "title": "Pack formats",
+  "description": "Vendor packs, learned packs, rule packs and fix packs. Validated at load time; a rejected pack names the offending field. Formats documented in packs/CLAUDE.md.",
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "semver": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "version_spec": {
+      "type": "string",
+      "pattern": "^(\\*|(>=|<=|>|<|==)\\d+(\\.\\d+)*(,(>=|<=|>|<|==)\\d+(\\.\\d+)*)*)$",
+      "description": "`*`, or comma-joined comparisons on the leading numeric release, e.g. `>=12.0,<16.0`."
+    },
+    "canonical_path": {"type": "string", "pattern": "^[a-z_]+(\\[(\\{[a-z_]+\\})?\\])?(\\.[a-z_]+(\\[(\\{[a-z_]+\\})?\\])?)*$"},
+    "detect_signature": {
+      "oneOf": [
+        {"type": "string", "pattern": "^\\^"},
+        {"type": "object", "additionalProperties": false, "required": ["pattern"],
+         "properties": {"pattern": {"type": "string", "pattern": "^\\^"}, "weight": {"type": "integer", "minimum": 1}}}
+      ],
+      "description": "Anchored regex. A bare string has weight 1."
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "canonical", "match", "fixture"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9_.]+$"},
+        "canonical": {"$ref": "#/$defs/canonical_path"},
+        "match": {"type": "string", "pattern": "^\\^", "description": "Anchored regex against the statement text (indentation stripped)."},
+        "scope": {"type": "string", "description": "Template the parent block must match, e.g. `interface {name}`, or an anchored regex with named groups when the template is too loose. Omitted: top-level statements only."},
+        "cast": {"enum": ["int", "str", "bool", "list", "min_sec"]},
+        "value": {"description": "Fixed value assigned when the line matches."},
+        "map": {"type": "object", "description": "Captured text → canonical value. A capture not listed means the line is not understood."},
+        "absent": {"enum": ["unknown", "default"]},
+        "default": {},
+        "default_os_version": {"$ref": "#/$defs/version_spec"},
+        "empty": {"enum": ["mapped", "unknown"], "description": "Collections only: what zero matches means."},
+        "defaults": {"type": "object", "description": "Collections only: values for named groups that did not participate."},
+        "auto_key": {"type": "boolean", "description": "Collections only: key missing from the line is assigned by position (10, 20, …) as defaulted."},
+        "priority": {"type": "integer"},
+        "fixture": {"type": "string", "minLength": 1, "description": "Config snippet this mapping must match."},
+        "expect": {"description": "Value the fixture must produce."},
+        "source": {"enum": ["shipped", "learned"]},
+        "author": {"type": "string"},
+        "created": {"type": "string"},
+        "cluster_signature": {"type": "string"}
+      },
+      "allOf": [
+        {"if": {"properties": {"canonical": {"pattern": "\\[\\]$"}}},
+         "then": {"required": ["empty"]},
+         "else": {"required": ["absent"]}},
+        {"if": {"required": ["absent"], "properties": {"absent": {"const": "default"}}},
+         "then": {"required": ["default", "default_os_version"]}}
+      ]
+    },
+    "vendor_pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "vendor", "os_family", "reader", "detect", "mappings"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/semver"},
+        "vendor": {"type": "string"},
+        "os_family": {"type": "string"},
+        "reader": {"enum": ["indent_blocks", "brace_tree", "set_commands", "structured", "key_value"]},
+        "detect": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/detect_signature"}},
+        "min_score": {"type": "integer", "minimum": 1},
+        "facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "hostname": {"$ref": "#/$defs/fact"},
+            "os_version": {"$ref": "#/$defs/fact"},
+            "model": {"$ref": "#/$defs/fact"},
+            "serial": {"$ref": "#/$defs/fact"}
+          }
+        },
+        "mappings": {"type": "array", "items": {"$ref": "#/$defs/mapping"}}
+      }
+    },
+    "fact": {
+      "type": "object", "additionalProperties": false, "required": ["pattern"],
+      "properties": {"pattern": {"type": "string", "pattern": "^\\^"}, "group": {"type": "integer", "minimum": 0}}
+    },
+    "learned_pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vendor_pack", "version", "mappings"],
+      "properties": {
+        "vendor_pack": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/semver"},
+        "mappings": {
+          "type": "array",
+          "items": {"allOf": [{"$ref": "#/$defs/mapping"},
+                              {"required": ["source", "author", "created", "cluster_signature"],
+                               "properties": {"source": {"const": "learned"}}}]}
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "applies_to", "requires", "assert", "severity", "fixtures"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+$"},
+        "title": {"type": "string"},
+        "control": {"type": ["string", "null"], "description": "Benchmark control ID, cited not quoted. Null until a human verifies it."},
+        "profile": {"type": "integer"},
+        "applies_to": {
+          "type": "object", "additionalProperties": false,
+          "properties": {"os_family": {"type": "string"}, "os_version": {"$ref": "#/$defs/version_spec"}}
+        },
+        "requires": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/canonical_path"}},
+        "for_each": {"type": "string", "pattern": "\\[\\]$", "description": "Collection whose items the assertion is evaluated against, one by one."},
+        "assert": {"type": "string", "minLength": 1, "description": "JMESPath; must evaluate to a boolean."},
+        "severity": {"enum": ["critical", "high", "medium", "low", "info"]},
+        "fix": {"type": "string"},
+        "fixtures": {
+          "type": "object", "additionalProperties": false, "required": ["pass", "fail"],
+          "properties": {"pass": {"type": "object"}, "fail": {"type": "object"}},
+          "description": "Canonical-model fragments (vendor-neutral): dotted path → value, collection path → list of items."
+        }
+      }
+    },
+    "rule_pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "framework", "rules"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/semver"},
+        "framework": {"enum": ["cis", "nist", "stig", "iso"]},
+        "rules": {"type": "array", "items": {"$ref": "#/$defs/rule"}}
+      }
+    },
+    "fix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "os_version", "commands", "rollback", "reload_required"],
+      "properties": {
+        "id": {"type": "string"},
+        "os_version": {"$ref": "#/$defs/version_spec"},
+        "commands": {"type": "array", "items": {"type": "string"}, "description": "A `{items}` line expands to item_commands once per failing item."},
+        "item_commands": {"type": "array", "items": {"type": "string"}},
+        "rollback": {"type": "array", "items": {"type": "string"}},
+        "item_rollback": {"type": "array", "items": {"type": "string"}},
+        "reload_required": {"type": "boolean"},
+        "operator_input": {"type": "array", "items": {"type": "string", "pattern": "^<[A-Z_]+>$"},
+                           "description": "Placeholders the operator must replace before pasting, e.g. <NEW_SECRET>."},
+        "note": {"type": "string"}
+      }
+    },
+    "fix_pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "vendor_pack", "fixes"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/semver"},
+        "vendor_pack": {"$ref": "#/$defs/id"},
+        "fixes": {"type": "array", "items": {"$ref": "#/$defs/fix"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+import re
+from typing import Any
+
+import pytest
+
+from src.audit import audit_device
+from src.ingest.redact import redact
+from src.mapping.canonical import Catalogue
+from src.mapping.engine import map_device
+from src.readers import READERS
+from src.registry import Snapshot
+from src.remediation.render import render
+from src.rules.evaluator import FAIL, NOT_DETERMINED, PASS, evaluate
+from src.rules.fixtures import model_from_fragment
+from tests.conftest import CONFIGS, PACKS
+
+RULE_IDS = [r["id"] for r in __import__("yaml").safe_load((PACKS / "rules" / "cis.yaml").read_text())["rules"]]
+MODE_LINES = {"configure terminal", "end", "write memory", "exit"}
+
+
+def _rule(snapshot: Snapshot, rule_id: str) -> Any:
+    return next(r for r in snapshot.rules["cis"].rules if r.id == rule_id)
+
+
+@pytest.mark.parametrize("rule_id", RULE_IDS)
+def test_rule_fixtures(snapshot: Snapshot, catalogue: Catalogue, rule_id: str) -> None:
+    rule = _rule(snapshot, rule_id)
+    assert evaluate(rule, model_from_fragment(catalogue, rule.raw["fixtures"]["pass"])).verdict == PASS
+    assert evaluate(rule, model_from_fragment(catalogue, rule.raw["fixtures"]["fail"])).verdict == FAIL
+    assert evaluate(rule, catalogue.empty_model()).verdict == NOT_DETERMINED
+
+
+def test_unread_collection_is_not_determined_never_vacuous_pass(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    rule = _rule(snapshot, "cis.interfaces.no_proxy_arp")
+    model = catalogue.empty_model()  # interfaces: state unknown, items []
+    v = evaluate(rule, model)
+    assert v.verdict == NOT_DETERMINED
+    assert "interfaces[].proxy_arp" in v.missing_fields
+
+
+def test_read_empty_collection_is_a_real_answer(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    rule = _rule(snapshot, "cis.local_users.strong_hash")
+    model = catalogue.empty_model()
+    model["auth"]["local_users"]["state"] = "mapped"
+    assert evaluate(rule, model).verdict == PASS
+
+
+def test_one_unknown_item_attribute_blocks_the_verdict(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    rule = _rule(snapshot, "cis.interfaces.no_proxy_arp")
+    model = model_from_fragment(catalogue, {"interfaces[]": [
+        {"name": "Gi0/1", "shutdown": False, "proxy_arp": True}, {"name": "Gi0/2", "shutdown": False}]})
+    assert evaluate(rule, model).verdict == NOT_DETERMINED
+
+
+def test_unrecognised_vendor_gets_no_false_failures(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    junos = "system {\n    host-name r1;\n    services {\n        ssh;\n        telnet;\n    }\n}\n"
+    result = audit_device(junos, "r1.conf", "r1", snapshot, catalogue, ["cis"])
+    assert result["vendor_pack"] is None
+    assert result["verdicts"] == {"pass": 0, "fail": 0, "not_determined": 15}
+
+
+@pytest.mark.parametrize("rule_id", RULE_IDS)
+def test_fix_actually_fixes(snapshot: Snapshot, catalogue: Catalogue, rule_id: str) -> None:
+    """Map the rendered fix as config: the rule must then PASS. Proves fix ↔ mapping ↔ rule agree."""
+    rule = _rule(snapshot, rule_id)
+    fix = snapshot.fixes["cisco_ios"].fixes.get(rule.raw.get("fix", ""))
+    if fix is None or fix.get("operator_input"):
+        pytest.skip("no fix, or the fix needs operator input")
+    failing = model_from_fragment(catalogue, rule.raw["fixtures"]["fail"])
+    each = rule.for_each
+    items = failing
+    for seg in (each or "").removesuffix("[]").split(".") if each else []:
+        items = items[seg]
+    rendered = render(fix, items["items"] if each else [], "15.2")
+    assert rendered is not None
+    assert not any(re.search(r"\{[a-z_]+\}", c) for c in rendered["commands"])
+    config = ["version 15.2"] + [c for c in rendered["commands"] if c.strip() not in MODE_LINES]
+    lines = redact("\n".join(config))
+    pack = snapshot.vendors["cisco_ios"]
+    model = map_device(pack, READERS["indent_blocks"](lines), lines, catalogue, None).model
+    assert evaluate(rule, model).verdict == PASS, rendered["commands"]
+
+
+def test_fix_is_idempotent_when_rendered_twice(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    result = audit_device((CONFIGS / "as2dept1.cfg").read_text(), "x", "x", snapshot, catalogue, ["cis"])
+    again = audit_device((CONFIGS / "as2dept1.cfg").read_text(), "x", "x", snapshot, catalogue, ["cis"])
+    assert result["findings"] == again["findings"]
+
+
+def test_fix_withheld_when_os_too_old(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    result = audit_device((CONFIGS / "as2dept1.cfg").read_text(), "x", "x", snapshot, catalogue, ["cis"])
+    f = next(f for f in result["findings"] if f["rule_id"] == "cis.enable_secret.strong_hash")
+    assert f["verdict"] == FAIL and f["remediation"] is None  # algorithm-type scrypt needs 15.3+
+
+
+def test_per_interface_fix_names_each_failing_interface(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    result = audit_device((CONFIGS / "as2dept1.cfg").read_text(), "x", "x", snapshot, catalogue, ["cis"])
+    f = next(f for f in result["findings"] if f["rule_id"] == "cis.interfaces.no_proxy_arp")
+    names = [c.split()[1] for c in f["remediation"]["commands"] if c.startswith("interface ")]
+    assert "Ethernet0/0" not in names  # shut down in the config
+    assert names == ["Loopback0", "GigabitEthernet0/0", "GigabitEthernet1/0", "GigabitEthernet2/0",
+                     "GigabitEthernet3/0"]

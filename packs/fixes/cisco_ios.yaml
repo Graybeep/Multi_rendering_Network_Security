@@ -1,0 +1,120 @@
+# Remediation CLI for Cisco IOS. A `{items}` line expands to item_commands once per failing item;
+# `{name}` and other `{attr}` placeholders come from that item in the canonical model.
+# `<UPPER_CASE>` placeholders are operator input and must be replaced before pasting.
+id: cisco_ios_fixes
+version: 1.0.0
+vendor_pack: cisco_ios
+fixes:
+  - id: fix_ssh_v2
+    os_version: '>=12.0'
+    commands: [configure terminal, ip ssh version 2, end, write memory]
+    rollback: [configure terminal, no ip ssh version, end]
+    reload_required: false
+
+  - id: fix_ssh_timeout
+    os_version: '>=12.0'
+    commands: [configure terminal, ip ssh time-out 60, end, write memory]
+    rollback: [configure terminal, no ip ssh time-out, end]
+    reload_required: false
+
+  - id: fix_ssh_retries
+    os_version: '>=12.0'
+    commands: [configure terminal, ip ssh authentication-retries 3, end, write memory]
+    rollback: [configure terminal, no ip ssh authentication-retries, end]
+    reload_required: false
+
+  - id: fix_no_http
+    os_version: '>=12.0'
+    commands: [configure terminal, no ip http server, end, write memory]
+    rollback: [configure terminal, ip http server, end]
+    reload_required: false
+
+  - id: fix_aaa_new_model
+    os_version: '>=12.0'
+    commands: [configure terminal, aaa new-model, aaa authentication login default local, end, write memory]
+    rollback: [configure terminal, no aaa new-model, end]
+    reload_required: false
+    note: Enabling AAA changes how every line authenticates. Confirm a local admin user exists first or you will be locked out.
+
+  - id: fix_enable_secret
+    os_version: '>=15.3'
+    commands: [configure terminal, enable algorithm-type scrypt secret <NEW_SECRET>, end, write memory]
+    rollback: []
+    reload_required: false
+    operator_input: [<NEW_SECRET>]
+    note: The previous secret cannot be restored from the configuration; keep it in your password manager before changing.
+
+  - id: fix_user_secret
+    os_version: '>=15.3'
+    commands: [configure terminal, '{items}', end, write memory]
+    item_commands: ['username {name} algorithm-type scrypt secret <NEW_SECRET>']
+    rollback: []
+    reload_required: false
+    operator_input: [<NEW_SECRET>]
+    note: Each user needs a new password; the old hash cannot be converted.
+
+  - id: fix_login_banner
+    os_version: '>=12.0'
+    commands: [configure terminal, 'banner login ^C<BANNER_TEXT>^C', end, write memory]
+    rollback: [configure terminal, no banner login, end]
+    reload_required: false
+    operator_input: [<BANNER_TEXT>]
+
+  - id: fix_logging_host
+    os_version: '>=12.0'
+    commands: [configure terminal, logging host <SYSLOG_SERVER>, end, write memory]
+    rollback: [configure terminal, no logging host <SYSLOG_SERVER>, end]
+    reload_required: false
+    operator_input: [<SYSLOG_SERVER>]
+
+  - id: fix_logging_trap
+    os_version: '>=12.0'
+    commands: [configure terminal, logging trap informational, end, write memory]
+    rollback: [configure terminal, no logging trap, end]
+    reload_required: false
+
+  - id: fix_ntp_authenticate
+    os_version: '>=12.0'
+    commands:
+      - configure terminal
+      - ntp authentication-key <KEY_ID> md5 <NTP_KEY>
+      - ntp trusted-key <KEY_ID>
+      - ntp authenticate
+      - end
+      - write memory
+    rollback: [configure terminal, no ntp authenticate, end]
+    reload_required: false
+    operator_input: [<KEY_ID>, <NTP_KEY>]
+    note: Servers must be configured with the same key, and `ntp server <ip> key <KEY_ID>` set per server.
+
+  - id: fix_no_proxy_arp
+    os_version: '>=12.0'
+    commands: [configure terminal, '{items}', end, write memory]
+    item_commands: ['interface {name}', ' no ip proxy-arp', ' exit']
+    rollback: [configure terminal, '{items}', end]
+    item_rollback: ['interface {name}', ' ip proxy-arp', ' exit']
+    reload_required: false
+
+  - id: fix_vty_ssh_only
+    os_version: '>=12.0'
+    commands: [configure terminal, '{items}', end, write memory]
+    item_commands: ['line {name}', ' transport input ssh', ' exit']
+    rollback: []
+    reload_required: false
+    note: Confirm SSH works on this device before removing Telnet, or keep a console session open.
+
+  - id: fix_vty_access_class
+    os_version: '>=12.0'
+    commands: [configure terminal, '{items}', end, write memory]
+    item_commands: ['line {name}', ' access-class <MGMT_ACL> in', ' exit']
+    rollback: [configure terminal, '{items}', end]
+    item_rollback: ['line {name}', ' no access-class <MGMT_ACL> in', ' exit']
+    reload_required: false
+    operator_input: [<MGMT_ACL>]
+    note: The access list must already exist and permit your management stations.
+
+  - id: fix_no_cdp
+    os_version: '>=12.0'
+    commands: [configure terminal, no cdp run, end, write memory]
+    rollback: [configure terminal, cdp run, end]
+    reload_required: false

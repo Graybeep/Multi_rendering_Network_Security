@@ -1,0 +1,191 @@
+# CIS-aligned network hardening checks over the canonical model. Never mentions a vendor.
+# Assertions and titles are our own words. `control` is null until a human cites the
+# benchmark control ID from the licensed CIS document — do not guess IDs.
+# Fixtures are canonical-model fragments, so they stay vendor-neutral.
+id: cis
+version: 1.0.0
+framework: cis
+rules:
+  - id: cis.ssh.version_2
+    title: Only SSH protocol version 2 is accepted
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [services.ssh.version]
+    assert: 'services.ssh.version == `2`'
+    severity: high
+    fix: fix_ssh_v2
+    fixtures:
+      pass: {services.ssh.version: 2}
+      fail: {services.ssh.version: 1}
+
+  - id: cis.ssh.timeout
+    title: SSH login timeout is 60 seconds or less
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [services.ssh.timeout]
+    assert: 'services.ssh.timeout <= `60`'
+    severity: medium
+    fix: fix_ssh_timeout
+    fixtures:
+      pass: {services.ssh.timeout: 60}
+      fail: {services.ssh.timeout: 120}
+
+  - id: cis.ssh.auth_retries
+    title: SSH allows at most 3 authentication attempts
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [services.ssh.max_auth_tries]
+    assert: 'services.ssh.max_auth_tries <= `3`'
+    severity: medium
+    fix: fix_ssh_retries
+    fixtures:
+      pass: {services.ssh.max_auth_tries: 3}
+      fail: {services.ssh.max_auth_tries: 5}
+
+  - id: cis.http.disabled
+    title: Unencrypted HTTP management server is disabled
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [services.http.enabled]
+    assert: 'services.http.enabled == `false`'
+    severity: medium
+    fix: fix_no_http
+    fixtures:
+      pass: {services.http.enabled: false}
+      fail: {services.http.enabled: true}
+
+  - id: cis.aaa.enabled
+    title: Centralised AAA is enabled
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [auth.aaa.enabled]
+    assert: 'auth.aaa.enabled == `true`'
+    severity: high
+    fix: fix_aaa_new_model
+    fixtures:
+      pass: {auth.aaa.enabled: true}
+      fail: {auth.aaa.enabled: false}
+
+  - id: cis.enable_secret.strong_hash
+    title: Privileged-mode password is stored with a strong hash
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [auth.enable_secret.algorithm]
+    assert: 'contains(`["scrypt", "pbkdf2_sha256", "sha512_crypt", "bcrypt"]`, auth.enable_secret.algorithm)'
+    severity: high
+    fix: fix_enable_secret
+    fixtures:
+      pass: {auth.enable_secret.algorithm: scrypt}
+      fail: {auth.enable_secret.algorithm: md5}
+
+  - id: cis.local_users.strong_hash
+    title: Every local user password is stored with a strong hash
+    control: null
+    applies_to: {os_family: '*'}
+    for_each: 'auth.local_users[]'
+    requires: ['auth.local_users[].password_algorithm']
+    assert: 'contains(`["scrypt", "pbkdf2_sha256", "sha512_crypt", "bcrypt"]`, password_algorithm)'
+    severity: high
+    fix: fix_user_secret
+    fixtures:
+      pass: {'auth.local_users[]': [{name: admin, password_algorithm: scrypt}]}
+      fail: {'auth.local_users[]': [{name: admin, password_algorithm: reversible}]}
+
+  - id: cis.login_banner
+    title: A login warning banner is configured
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [auth.login_banner.present]
+    assert: 'auth.login_banner.present == `true`'
+    severity: low
+    fix: fix_login_banner
+    fixtures:
+      pass: {auth.login_banner.present: true}
+      fail: {auth.login_banner.present: false}
+
+  - id: cis.logging.remote_host
+    title: Logs are sent to at least one remote syslog server
+    control: null
+    applies_to: {os_family: '*'}
+    requires: ['logging.servers[]']
+    assert: 'length(logging.servers) > `0`'
+    severity: medium
+    fix: fix_logging_host
+    fixtures:
+      pass: {'logging.servers[]': [10.0.0.5]}
+      fail: {'logging.servers[]': []}
+
+  - id: cis.logging.trap_level
+    title: Remote logging captures informational events or more
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [logging.level]
+    assert: 'logging.level >= `6`'
+    severity: low
+    fix: fix_logging_trap
+    fixtures:
+      pass: {logging.level: 6}
+      fail: {logging.level: 3}
+
+  - id: cis.ntp.authenticate
+    title: Time synchronisation requires authenticated servers
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [ntp.authenticate]
+    assert: 'ntp.authenticate == `true`'
+    severity: medium
+    fix: fix_ntp_authenticate
+    fixtures:
+      pass: {ntp.authenticate: true}
+      fail: {ntp.authenticate: false}
+
+  - id: cis.interfaces.no_proxy_arp
+    title: Proxy ARP is disabled on every active interface
+    control: null
+    applies_to: {os_family: '*'}
+    for_each: 'interfaces[]'
+    requires: ['interfaces[].proxy_arp', 'interfaces[].shutdown']
+    assert: 'shutdown == `true` || proxy_arp == `false`'
+    severity: medium
+    fix: fix_no_proxy_arp
+    fixtures:
+      pass: {'interfaces[]': [{name: Gi0/1, shutdown: false, proxy_arp: false}, {name: Gi0/2, shutdown: true, proxy_arp: true}]}
+      fail: {'interfaces[]': [{name: Gi0/1, shutdown: false, proxy_arp: true}]}
+
+  - id: cis.vty.ssh_only
+    title: Remote login lines accept SSH only
+    control: null
+    applies_to: {os_family: '*'}
+    for_each: 'mgmt.vty_lines[]'
+    requires: ['mgmt.vty_lines[].transport_input']
+    assert: 'transport_input == `["ssh"]`'
+    severity: high
+    fix: fix_vty_ssh_only
+    fixtures:
+      pass: {'mgmt.vty_lines[]': [{name: vty 0 4, transport_input: [ssh]}]}
+      fail: {'mgmt.vty_lines[]': [{name: vty 0 4, transport_input: [ssh, telnet]}]}
+
+  - id: cis.vty.access_class
+    title: Remote login lines restrict source addresses with an access list
+    control: null
+    applies_to: {os_family: '*'}
+    for_each: 'mgmt.vty_lines[]'
+    requires: ['mgmt.vty_lines[].access_class']
+    assert: 'access_class != `null`'
+    severity: high
+    fix: fix_vty_access_class
+    fixtures:
+      pass: {'mgmt.vty_lines[]': [{name: vty 0 4, access_class: MGMT}]}
+      fail: {'mgmt.vty_lines[]': [{name: vty 0 4, access_class: null}]}
+
+  - id: cis.cdp.disabled
+    title: Cisco Discovery Protocol is disabled globally
+    control: null
+    applies_to: {os_family: '*'}
+    requires: [discovery.cdp_enabled]
+    assert: 'discovery.cdp_enabled == `false`'
+    severity: low
+    fix: fix_no_cdp
+    fixtures:
+      pass: {discovery.cdp_enabled: false}
+      fail: {discovery.cdp_enabled: true}

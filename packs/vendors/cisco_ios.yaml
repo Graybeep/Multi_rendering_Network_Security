@@ -1,0 +1,494 @@
+# Cisco IOS / IOS-XE classic CLI. Vendor knowledge lives here, not in code.
+# Every default is scoped to an OS version range; outside it the field stays unknown.
+# REVIEW(H): defaults below reflect IOS 12.x–15.x behaviour and need a human sign-off.
+id: cisco_ios
+version: 1.0.0
+vendor: cisco
+os_family: ios
+reader: indent_blocks
+min_score: 2
+detect:
+  - {pattern: '^version 1[2-7]\.\d+$', weight: 2}
+  - {pattern: '^boot-start-marker$', weight: 2}
+  - '^Building configuration'
+  - '^service timestamps '
+  - '^ip cef$'
+facts:
+  hostname: {pattern: '^hostname (\S+)$', group: 1}
+  os_version: {pattern: '^version (\S+)$', group: 1}
+
+mappings:
+  # ── SSH ──────────────────────────────────────────────────────────────
+  - id: ios.ssh.version
+    canonical: services.ssh.version
+    match: '^ip ssh version (\d)$'
+    absent: unknown          # 15.x without the line accepts 1.99; depends on image
+    fixture: ip ssh version 2
+    expect: 2
+
+  - id: ios.ssh.timeout
+    canonical: services.ssh.timeout
+    match: '^ip ssh time-out (\d+)$'
+    absent: default
+    default: 120
+    default_os_version: '>=12.0'
+    fixture: ip ssh time-out 60
+    expect: 60
+
+  - id: ios.ssh.auth_retries
+    canonical: services.ssh.max_auth_tries
+    match: '^ip ssh authentication-retries (\d+)$'
+    absent: default
+    default: 3
+    default_os_version: '>=12.0'
+    fixture: ip ssh authentication-retries 3
+    expect: 3
+
+  # ── Web management ───────────────────────────────────────────────────
+  - id: ios.http.on
+    canonical: services.http.enabled
+    match: '^ip http server$'
+    value: true
+    absent: unknown          # factory default differs between images
+    fixture: ip http server
+    expect: true
+
+  - id: ios.http.off
+    canonical: services.http.enabled
+    match: '^no ip http server$'
+    value: false
+    absent: unknown
+    fixture: no ip http server
+    expect: false
+
+  - id: ios.https.on
+    canonical: services.https.enabled
+    match: '^ip http secure-server$'
+    value: true
+    absent: unknown
+    fixture: ip http secure-server
+    expect: true
+
+  - id: ios.https.off
+    canonical: services.https.enabled
+    match: '^no ip http secure-server$'
+    value: false
+    absent: unknown
+    fixture: no ip http secure-server
+    expect: false
+
+  # ── Authentication ───────────────────────────────────────────────────
+  - id: ios.aaa.on
+    canonical: auth.aaa.enabled
+    match: '^aaa new-model$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: aaa new-model
+    expect: true
+
+  - id: ios.aaa.off
+    canonical: auth.aaa.enabled
+    match: '^no aaa new-model$'
+    value: false
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: no aaa new-model
+    expect: false
+
+  - id: ios.enable_secret.typed
+    canonical: auth.enable_secret.algorithm
+    match: '^enable (?:algorithm-type \S+ )?secret ([0-9]) \S+$'
+    map: {'0': md5, '4': sha256_unsalted, '5': md5, '8': pbkdf2_sha256, '9': scrypt}
+    absent: default
+    default: none
+    default_os_version: '>=12.0'
+    fixture: enable secret 9 ****
+    expect: scrypt
+
+  - id: ios.enable_secret.untyped
+    canonical: auth.enable_secret.algorithm
+    match: '^enable secret \S+$'
+    value: md5               # IOS hashes an untyped enable secret with MD5 (type 5)
+    absent: default
+    default: none
+    default_os_version: '>=12.0'
+    fixture: enable secret ****
+    expect: md5
+
+  - id: ios.password_min_length
+    canonical: auth.password_min_length
+    match: '^security passwords min-length (\d+)$'
+    absent: default
+    default: 0
+    default_os_version: '>=12.0'
+    fixture: security passwords min-length 8
+    expect: 8
+
+  - id: ios.login_banner
+    canonical: auth.login_banner.present
+    match: '^banner (?:login|motd) '
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: banner login ^CAuthorised access only^C
+    expect: true
+
+  - id: ios.local_users
+    canonical: auth.local_users[]
+    match: '^username (?P<name>\S+)(?: privilege (?P<privilege>\d+))?(?: (?P<password_algorithm>(?:secret|password)(?: [0-9])?) \S+)?$'
+    map:
+      password_algorithm:
+        'password': plaintext
+        'password 0': plaintext
+        'password 7': reversible
+        'secret': md5
+        'secret 0': md5
+        'secret 4': sha256_unsalted
+        'secret 5': md5
+        'secret 8': pbkdf2_sha256
+        'secret 9': scrypt
+    defaults: {privilege: 1}
+    empty: mapped
+    fixture: username admin privilege 15 secret 9 ****
+
+  # ── Logging ──────────────────────────────────────────────────────────
+  - id: ios.logging.on
+    canonical: logging.enabled
+    match: '^logging on$'
+    value: true
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: logging on
+    expect: true
+
+  - id: ios.logging.off
+    canonical: logging.enabled
+    match: '^no logging on$'
+    value: false
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: no logging on
+    expect: false
+
+  - id: ios.logging.trap
+    canonical: logging.level
+    match: '^logging trap (\S+)$'
+    map: {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
+          emergencies: 0, alerts: 1, critical: 2, errors: 3, warnings: 4,
+          notifications: 5, informational: 6, debugging: 7}
+    absent: default
+    default: 6
+    default_os_version: '>=12.0'
+    fixture: logging trap informational
+    expect: 6
+
+  - id: ios.logging.buffered.on
+    canonical: logging.buffered_enabled
+    match: '^logging buffered(?: \S+)*$'
+    value: true
+    absent: unknown
+    fixture: logging buffered 64000
+    expect: true
+
+  - id: ios.logging.buffered.off
+    canonical: logging.buffered_enabled
+    match: '^no logging buffered$'
+    value: false
+    absent: unknown
+    fixture: no logging buffered
+    expect: false
+
+  - id: ios.logging.host
+    canonical: logging.servers[]
+    match: '^logging (?:host )?(?P<value>\d{1,3}(?:\.\d{1,3}){3})(?: .*)?$'
+    empty: mapped
+    fixture: logging host 10.0.0.5
+
+  # ── NTP ──────────────────────────────────────────────────────────────
+  - id: ios.ntp.server
+    canonical: ntp.servers[]
+    match: '^ntp server (?:vrf \S+ )?(?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: ntp server 10.0.0.1
+
+  - id: ios.ntp.authenticate
+    canonical: ntp.authenticate
+    match: '^ntp authenticate$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: ntp authenticate
+    expect: true
+
+  # ── SNMP ─────────────────────────────────────────────────────────────
+  - id: ios.snmp.community
+    canonical: snmp.communities[]
+    match: '^snmp-server community (?P<string_redacted>\S+)(?: view \S+)?(?: (?P<access>RO|RW))?(?: \S+)?$'
+    map:
+      access: {RO: ro, RW: rw}
+    defaults: {access: ro}
+    empty: mapped
+    fixture: snmp-server community **** RO
+
+  - id: ios.snmp.version_from_community
+    canonical: snmp.version
+    match: '^snmp-server community '
+    value: '1'               # a community string enables both v1 and v2c; v1 is the weakest answered
+    absent: unknown
+    fixture: snmp-server community **** RO
+    expect: '1'
+
+  - id: ios.snmp.traps
+    canonical: snmp.traps_enabled
+    match: '^snmp-server enable traps'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: snmp-server enable traps
+    expect: true
+
+  # ── Interfaces ───────────────────────────────────────────────────────
+  - id: ios.intf
+    canonical: interfaces[]
+    match: '^interface (?P<name>\S+)$'
+    empty: unknown
+    fixture: interface GigabitEthernet0/1
+
+  - id: ios.intf.shutdown
+    canonical: 'interfaces[{name}].shutdown'
+    scope: 'interface {name}'
+    match: '^shutdown$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       shutdown
+    expect: true
+
+  - id: ios.intf.description
+    canonical: 'interfaces[{name}].description'
+    scope: 'interface {name}'
+    match: '^description (.+)$'
+    absent: default
+    default: null
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       description uplink
+    expect: uplink
+
+  - id: ios.intf.proxy_arp.on
+    canonical: 'interfaces[{name}].proxy_arp'
+    scope: 'interface {name}'
+    match: '^ip proxy-arp$'
+    value: true
+    absent: default
+    default: true            # IOS enables proxy ARP on IP interfaces unless told otherwise
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       ip proxy-arp
+    expect: true
+
+  - id: ios.intf.proxy_arp.off
+    canonical: 'interfaces[{name}].proxy_arp'
+    scope: 'interface {name}'
+    match: '^no ip proxy-arp$'
+    value: false
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       no ip proxy-arp
+    expect: false
+
+  - id: ios.intf.redirects.on
+    canonical: 'interfaces[{name}].ip_redirects'
+    scope: 'interface {name}'
+    match: '^ip redirects$'
+    value: true
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       ip redirects
+    expect: true
+
+  - id: ios.intf.redirects.off
+    canonical: 'interfaces[{name}].ip_redirects'
+    scope: 'interface {name}'
+    match: '^no ip redirects$'
+    value: false
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       no ip redirects
+    expect: false
+
+  - id: ios.intf.unreachables.on
+    canonical: 'interfaces[{name}].unreachables'
+    scope: 'interface {name}'
+    match: '^ip unreachables$'
+    value: true
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       ip unreachables
+    expect: true
+
+  - id: ios.intf.unreachables.off
+    canonical: 'interfaces[{name}].unreachables'
+    scope: 'interface {name}'
+    match: '^no ip unreachables$'
+    value: false
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: |
+      interface GigabitEthernet0/1
+       no ip unreachables
+    expect: false
+
+  - id: ios.intf.switchport_mode
+    canonical: 'interfaces[{name}].switchport_mode'
+    scope: 'interface {name}'
+    match: '^switchport mode (access|trunk|dynamic auto|dynamic desirable)$'
+    map: {access: access, trunk: trunk, 'dynamic auto': dynamic, 'dynamic desirable': dynamic}
+    absent: unknown          # router ports are routed; switch ports default to dynamic
+    fixture: |
+      interface GigabitEthernet0/1
+       switchport mode access
+    expect: access
+
+  - id: ios.intf.access_vlan
+    canonical: 'interfaces[{name}].access_vlan'
+    scope: 'interface {name}'
+    match: '^switchport access vlan (\d+)$'
+    absent: unknown
+    fixture: |
+      interface GigabitEthernet0/1
+       switchport access vlan 10
+    expect: 10
+
+  # ── VTY lines ────────────────────────────────────────────────────────
+  - id: ios.vty
+    canonical: mgmt.vty_lines[]
+    match: '^line (?P<name>vty \d+(?: \d+)?)$'
+    empty: unknown
+    fixture: line vty 0 4
+
+  - id: ios.vty.transport_input
+    canonical: 'mgmt.vty_lines[{name}].transport_input'
+    scope: '^line (?P<name>vty \d+(?: \d+)?)$'
+    match: '^transport input ((?:ssh|telnet|rlogin|all|none)(?: (?:ssh|telnet|rlogin))*)$'
+    absent: unknown          # the default changed across 12.x/15.x/XE releases
+    fixture: |
+      line vty 0 4
+       transport input ssh
+    expect: [ssh]
+
+  - id: ios.vty.access_class
+    canonical: 'mgmt.vty_lines[{name}].access_class'
+    scope: '^line (?P<name>vty \d+(?: \d+)?)$'
+    match: '^access-class (\S+) in(?: vrf-also)?$'
+    absent: default
+    default: null
+    default_os_version: '>=12.0'
+    fixture: |
+      line vty 0 4
+       access-class MGMT in
+    expect: MGMT
+
+  - id: ios.vty.exec_timeout
+    canonical: 'mgmt.vty_lines[{name}].exec_timeout'
+    scope: '^line (?P<name>vty \d+(?: \d+)?)$'
+    match: '^exec-timeout (\d+)(?: (\d+))?$'
+    cast: min_sec
+    absent: default
+    default: 600
+    default_os_version: '>=12.0'
+    fixture: |
+      line vty 0 4
+       exec-timeout 5 0
+    expect: 300
+
+  # ── Access lists ─────────────────────────────────────────────────────
+  - id: ios.acl.named
+    canonical: acl.lists[]
+    match: '^ip access-list (?:extended|standard) (?P<name>\S+)$'
+    empty: mapped
+    fixture: ip access-list extended MGMT
+
+  - id: ios.acl.named.entry
+    canonical: 'acl.lists[{name}].entries[]'
+    scope: 'ip access-list {kind} {name}'
+    match: '^(?:(?P<seq>\d+) )?(?P<action>permit|deny) '
+    auto_key: true
+    empty: mapped
+    fixture: |
+      ip access-list extended MGMT
+       permit ip 10.0.0.0 0.0.0.255 any
+
+  - id: ios.acl.numbered.entry
+    canonical: 'acl.lists[{name}].entries[]'
+    match: '^access-list (?P<name>\d+) (?P<action>permit|deny) '
+    auto_key: true
+    empty: mapped
+    fixture: access-list 10 permit 10.0.0.0 0.0.0.255
+
+  # ── Discovery protocols ──────────────────────────────────────────────
+  - id: ios.cdp.on
+    canonical: discovery.cdp_enabled
+    match: '^cdp run$'
+    value: true
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: cdp run
+    expect: true
+
+  - id: ios.cdp.off
+    canonical: discovery.cdp_enabled
+    match: '^no cdp run$'
+    value: false
+    absent: default
+    default: true
+    default_os_version: '>=12.0'
+    fixture: no cdp run
+    expect: false
+
+  - id: ios.lldp.on
+    canonical: discovery.lldp_enabled
+    match: '^lldp run$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: lldp run
+    expect: true
+
+  - id: ios.lldp.off
+    canonical: discovery.lldp_enabled
+    match: '^no lldp run$'
+    value: false
+    absent: default
+    default: false
+    default_os_version: '>=12.0'
+    fixture: no lldp run
+    expect: false
