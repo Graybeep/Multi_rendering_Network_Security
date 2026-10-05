@@ -1,0 +1,699 @@
+{
+  "device_id": "as2dept1",
+  "filename": "as2dept1.cfg",
+  "status": "done",
+  "error": null,
+  "vendor_pack": "cisco_ios@1.0.0",
+  "detection_ambiguous": false,
+  "identity": {
+    "hostname": "as2dept1",
+    "vendor": "cisco",
+    "os_family": "ios",
+    "os_version": "15.2",
+    "model": null,
+    "serial": null
+  },
+  "verdicts": {
+    "pass": 4,
+    "fail": 9,
+    "not_determined": 2
+  },
+  "coverage": {
+    "mapped": 14,
+    "defaulted": 11,
+    "unknown": 8,
+    "ratio": 0.7576
+  },
+  "findings": [
+    {
+      "rule_id": "cis.aaa.enabled",
+      "title": "Centralised AAA is enabled",
+      "control": null,
+      "framework": "cis",
+      "severity": "high",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "auth.aaa.enabled",
+          "state": "mapped",
+          "value": false,
+          "line_no": 14,
+          "text": "no aaa new-model",
+          "mapping_id": "ios.aaa.off",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_aaa_new_model",
+        "commands": [
+          "configure terminal",
+          "aaa new-model",
+          "aaa authentication login default local",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "no aaa new-model",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [],
+        "note": "Enabling AAA changes how every line authenticates. Confirm a local admin user exists first or you will be locked out."
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.enable_secret.strong_hash",
+      "title": "Privileged-mode password is stored with a strong hash",
+      "control": null,
+      "framework": "cis",
+      "severity": "high",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "auth.enable_secret.algorithm",
+          "state": "defaulted",
+          "value": "none",
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.enable_secret.typed",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    },
+    {
+      "rule_id": "cis.vty.access_class",
+      "title": "Remote login lines restrict source addresses with an access list",
+      "control": null,
+      "framework": "cis",
+      "severity": "high",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "mgmt.vty_lines[].name",
+          "state": "mapped",
+          "value": "vty 0 4",
+          "line_no": 150,
+          "text": "line vty 0 4",
+          "mapping_id": "ios.vty",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "mgmt.vty_lines[].access_class",
+          "state": "defaulted",
+          "value": null,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.vty.access_class",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_vty_access_class",
+        "commands": [
+          "configure terminal",
+          "line vty 0 4",
+          " access-class <MGMT_ACL> in",
+          " exit",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "line vty 0 4",
+          " no access-class <MGMT_ACL> in",
+          " exit",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [
+          "<MGMT_ACL>"
+        ],
+        "note": "The access list must already exist and permit your management stations."
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.local_users.strong_hash",
+      "title": "Every local user password is stored with a strong hash",
+      "control": null,
+      "framework": "cis",
+      "severity": "high",
+      "verdict": "PASS",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [],
+      "missing_fields": [],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    },
+    {
+      "rule_id": "cis.ssh.version_2",
+      "title": "Only SSH protocol version 2 is accepted",
+      "control": null,
+      "framework": "cis",
+      "severity": "high",
+      "verdict": "NOT_DETERMINED",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "services.ssh.version",
+          "state": "unknown",
+          "value": null,
+          "line_no": null,
+          "text": null,
+          "mapping_id": null,
+          "pack_version": null
+        }
+      ],
+      "missing_fields": [
+        "services.ssh.version"
+      ],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    },
+    {
+      "rule_id": "cis.vty.ssh_only",
+      "title": "Remote login lines accept SSH only",
+      "control": null,
+      "framework": "cis",
+      "severity": "high",
+      "verdict": "NOT_DETERMINED",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "mgmt.vty_lines[].name",
+          "state": "mapped",
+          "value": "vty 0 4",
+          "line_no": 150,
+          "text": "line vty 0 4",
+          "mapping_id": "ios.vty",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "mgmt.vty_lines[].transport_input",
+          "state": "unknown",
+          "value": null,
+          "line_no": null,
+          "text": null,
+          "mapping_id": null,
+          "pack_version": null
+        }
+      ],
+      "missing_fields": [
+        "mgmt.vty_lines[].transport_input"
+      ],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    },
+    {
+      "rule_id": "cis.interfaces.no_proxy_arp",
+      "title": "Proxy ARP is disabled on every active interface",
+      "control": null,
+      "framework": "cis",
+      "severity": "medium",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "interfaces[].name",
+          "state": "mapped",
+          "value": "Loopback0",
+          "line_no": 51,
+          "text": "interface Loopback0",
+          "mapping_id": "ios.intf",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].proxy_arp",
+          "state": "defaulted",
+          "value": true,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.proxy_arp.on",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].shutdown",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.shutdown",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].name",
+          "state": "mapped",
+          "value": "GigabitEthernet0/0",
+          "line_no": 59,
+          "text": "interface GigabitEthernet0/0",
+          "mapping_id": "ios.intf",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].proxy_arp",
+          "state": "defaulted",
+          "value": true,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.proxy_arp.on",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].shutdown",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.shutdown",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].name",
+          "state": "mapped",
+          "value": "GigabitEthernet1/0",
+          "line_no": 66,
+          "text": "interface GigabitEthernet1/0",
+          "mapping_id": "ios.intf",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].proxy_arp",
+          "state": "defaulted",
+          "value": true,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.proxy_arp.on",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].shutdown",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.shutdown",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].name",
+          "state": "mapped",
+          "value": "GigabitEthernet2/0",
+          "line_no": 70,
+          "text": "interface GigabitEthernet2/0",
+          "mapping_id": "ios.intf",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].proxy_arp",
+          "state": "defaulted",
+          "value": true,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.proxy_arp.on",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].shutdown",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.shutdown",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].name",
+          "state": "mapped",
+          "value": "GigabitEthernet3/0",
+          "line_no": 75,
+          "text": "interface GigabitEthernet3/0",
+          "mapping_id": "ios.intf",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].proxy_arp",
+          "state": "defaulted",
+          "value": true,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.proxy_arp.on",
+          "pack_version": "cisco_ios@1.0.0"
+        },
+        {
+          "canonical_field": "interfaces[].shutdown",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.intf.shutdown",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_no_proxy_arp",
+        "commands": [
+          "configure terminal",
+          "interface Loopback0",
+          " no ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet0/0",
+          " no ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet1/0",
+          " no ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet2/0",
+          " no ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet3/0",
+          " no ip proxy-arp",
+          " exit",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "interface Loopback0",
+          " ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet0/0",
+          " ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet1/0",
+          " ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet2/0",
+          " ip proxy-arp",
+          " exit",
+          "interface GigabitEthernet3/0",
+          " ip proxy-arp",
+          " exit",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [],
+        "note": null
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.logging.remote_host",
+      "title": "Logs are sent to at least one remote syslog server",
+      "control": null,
+      "framework": "cis",
+      "severity": "medium",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "logging.servers[]",
+          "state": "mapped",
+          "value": [],
+          "line_no": null,
+          "text": null,
+          "mapping_id": null,
+          "pack_version": null
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_logging_host",
+        "commands": [
+          "configure terminal",
+          "logging host <SYSLOG_SERVER>",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "no logging host <SYSLOG_SERVER>",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [
+          "<SYSLOG_SERVER>"
+        ],
+        "note": null
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.ntp.authenticate",
+      "title": "Time synchronisation requires authenticated servers",
+      "control": null,
+      "framework": "cis",
+      "severity": "medium",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "ntp.authenticate",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.ntp.authenticate",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_ntp_authenticate",
+        "commands": [
+          "configure terminal",
+          "ntp authentication-key <KEY_ID> md5 <NTP_KEY>",
+          "ntp trusted-key <KEY_ID>",
+          "ntp authenticate",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "no ntp authenticate",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [
+          "<KEY_ID>",
+          "<NTP_KEY>"
+        ],
+        "note": "Servers must be configured with the same key, and `ntp server <ip> key <KEY_ID>` set per server."
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.ssh.timeout",
+      "title": "SSH login timeout is 60 seconds or less",
+      "control": null,
+      "framework": "cis",
+      "severity": "medium",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "services.ssh.timeout",
+          "state": "defaulted",
+          "value": 120,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.ssh.timeout",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_ssh_timeout",
+        "commands": [
+          "configure terminal",
+          "ip ssh time-out 60",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "no ip ssh time-out",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [],
+        "note": null
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.http.disabled",
+      "title": "Unencrypted HTTP management server is disabled",
+      "control": null,
+      "framework": "cis",
+      "severity": "medium",
+      "verdict": "PASS",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "services.http.enabled",
+          "state": "mapped",
+          "value": false,
+          "line_no": 107,
+          "text": "no ip http server",
+          "mapping_id": "ios.http.off",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    },
+    {
+      "rule_id": "cis.ssh.auth_retries",
+      "title": "SSH allows at most 3 authentication attempts",
+      "control": null,
+      "framework": "cis",
+      "severity": "medium",
+      "verdict": "PASS",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "services.ssh.max_auth_tries",
+          "state": "defaulted",
+          "value": 3,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.ssh.auth_retries",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    },
+    {
+      "rule_id": "cis.cdp.disabled",
+      "title": "Cisco Discovery Protocol is disabled globally",
+      "control": null,
+      "framework": "cis",
+      "severity": "low",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "discovery.cdp_enabled",
+          "state": "defaulted",
+          "value": true,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.cdp.on",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_no_cdp",
+        "commands": [
+          "configure terminal",
+          "no cdp run",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "cdp run",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [],
+        "note": null
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.login_banner",
+      "title": "A login warning banner is configured",
+      "control": null,
+      "framework": "cis",
+      "severity": "low",
+      "verdict": "FAIL",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "auth.login_banner.present",
+          "state": "defaulted",
+          "value": false,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.login_banner",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": {
+        "fix_id": "fix_login_banner",
+        "commands": [
+          "configure terminal",
+          "banner login ^C<BANNER_TEXT>^C",
+          "end",
+          "write memory"
+        ],
+        "rollback": [
+          "configure terminal",
+          "no banner login",
+          "end"
+        ],
+        "reload_required": false,
+        "operator_input": [
+          "<BANNER_TEXT>"
+        ],
+        "note": null
+      },
+      "fix_pack_version": "cisco_ios_fixes@1.0.0",
+      "error": null
+    },
+    {
+      "rule_id": "cis.logging.trap_level",
+      "title": "Remote logging captures informational events or more",
+      "control": null,
+      "framework": "cis",
+      "severity": "low",
+      "verdict": "PASS",
+      "rule_pack_version": "cis@1.0.0",
+      "evidence": [
+        {
+          "canonical_field": "logging.level",
+          "state": "defaulted",
+          "value": 6,
+          "line_no": null,
+          "text": null,
+          "mapping_id": "ios.logging.trap",
+          "pack_version": "cisco_ios@1.0.0"
+        }
+      ],
+      "missing_fields": [],
+      "remediation": null,
+      "fix_pack_version": null,
+      "error": null
+    }
+  ]
+}
