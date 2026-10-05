@@ -1,0 +1,1611 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wi-fight.local/schemas/canonical.schema.json",
+  "title": "Canonical device security model",
+  "description": "Vendor-neutral security model produced by the mapping engine for one device. Every leaf is a {value, state, evidence} triple; every collection carries its own state. Rule assertions read values through the evaluator's projection, so `services.ssh.version` in a rule means `services.ssh.version.value` here. Annotations: x-path is the canonical field path used by packs and rules (never rename one; adding is free); x-absent is the default absent-semantics a vendor pack should start from; x-key is the attribute a pack scope like `interfaces[{name}]` joins on. Field descriptions are ranking text for the suggestion service.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "canonical_schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hostname": {
+          "description": "The name the device calls itself, as set in its configuration.",
+          "x-path": "device.hostname",
+          "x-absent": "unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "vendor": {
+          "description": "The manufacturer of the device, such as Cisco or Juniper.",
+          "x-path": "device.vendor",
+          "x-absent": "unknown; set from pack detection",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "os_family": {
+          "description": "The operating system family running on the device, such as IOS, NX-OS or Junos.",
+          "x-path": "device.os_family",
+          "x-absent": "unknown; set from pack detection",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "os_version": {
+          "description": "The software release version of the device operating system.",
+          "x-path": "device.os_version",
+          "x-absent": "unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "model": {
+          "description": "The hardware model or platform name of the device.",
+          "x-path": "device.model",
+          "x-absent": "unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "serial": {
+          "description": "The chassis serial number of the device.",
+          "x-path": "device.serial",
+          "x-absent": "unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "hostname",
+        "vendor",
+        "os_family",
+        "os_version",
+        "model",
+        "serial"
+      ]
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ssh": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether remote login over the encrypted Secure Shell protocol is turned on.",
+              "x-path": "services.ssh.enabled",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "version": {
+              "description": "Which Secure Shell protocol version is accepted; version 1 is cryptographically broken and version 2 is required by hardening guides.",
+              "x-path": "services.ssh.version",
+              "x-absent": "unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "enum": [
+                        1,
+                        2,
+                        null
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "timeout": {
+              "description": "How many seconds the device waits for an SSH client to finish logging in before dropping the connection.",
+              "x-path": "services.ssh.timeout",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    }
+                  }
+                }
+              ]
+            },
+            "max_auth_tries": {
+              "description": "How many failed password attempts an SSH client is allowed before the connection is closed.",
+              "x-path": "services.ssh.max_auth_tries",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled",
+            "version",
+            "timeout",
+            "max_auth_tries"
+          ]
+        },
+        "telnet": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether remote login over unencrypted Telnet, which sends passwords in clear text, is turned on.",
+              "x-path": "services.telnet.enabled",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "http": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether the built-in web management server is reachable over unencrypted HTTP.",
+              "x-path": "services.http.enabled",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "https": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether the built-in web management server is reachable over encrypted HTTPS.",
+              "x-path": "services.https.enabled",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        }
+      },
+      "required": [
+        "ssh",
+        "telnet",
+        "http",
+        "https"
+      ]
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "aaa": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "description": "Whether centralised authentication, authorisation and accounting is switched on instead of only local line passwords.",
+              "x-path": "auth.aaa.enabled",
+              "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "enabled"
+          ]
+        },
+        "enable_secret": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "algorithm": {
+              "description": "How the privileged-mode administrator password is stored: plaintext, reversibly encoded, or hashed and with which hash function.",
+              "x-path": "auth.enable_secret.algorithm",
+              "x-absent": "unknown",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "enum": [
+                        "none",
+                        "plaintext",
+                        "reversible",
+                        "md5",
+                        "sha256_unsalted",
+                        "sha256_crypt",
+                        "sha512_crypt",
+                        "pbkdf2_sha256",
+                        "scrypt",
+                        "bcrypt",
+                        null
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "algorithm"
+          ]
+        },
+        "password_min_length": {
+          "description": "The shortest password the device will accept when a local password is set.",
+          "x-path": "auth.password_min_length",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        },
+        "login_banner": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "present": {
+              "description": "Whether a warning message is shown to users before they log in, such as an authorised-use-only notice.",
+              "x-path": "auth.login_banner.present",
+              "x-absent": "default false when the banner command is absent",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/triple"
+                },
+                {
+                  "properties": {
+                    "value": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": [
+            "present"
+          ]
+        },
+        "local_users": {
+          "description": "User accounts defined directly on the device rather than on an authentication server.",
+          "x-path": "auth.local_users[]",
+          "x-key": "name",
+          "x-absent": "empty with state mapped when the reader parsed the file and found no user definitions",
+          "allOf": [
+            {
+              "$ref": "#/$defs/collection"
+            },
+            {
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "description": "The login name of a locally defined user account.",
+                        "x-path": "auth.local_users[].name",
+                        "x-absent": "unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "privilege": {
+                        "description": "The privilege level granted to a local user account; higher means more administrative power.",
+                        "x-path": "auth.local_users[].privilege",
+                        "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "minimum": 0
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "password_algorithm": {
+                        "description": "How a local user's password is stored: plaintext, reversibly encoded, or hashed and with which hash function.",
+                        "x-path": "auth.local_users[].password_algorithm",
+                        "x-absent": "unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "none",
+                                  "plaintext",
+                                  "reversible",
+                                  "md5",
+                                  "sha256_unsalted",
+                                  "sha256_crypt",
+                                  "sha512_crypt",
+                                  "pbkdf2_sha256",
+                                  "scrypt",
+                                  "bcrypt",
+                                  null
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "aaa",
+        "enable_secret",
+        "password_min_length",
+        "login_banner",
+        "local_users"
+      ]
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "idle_timeout": {
+          "description": "How many seconds an idle administrative session stays open before the device logs it out; 0 means never.",
+          "x-path": "session.idle_timeout",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "idle_timeout"
+      ]
+    },
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Whether the device records system and security events at all.",
+          "x-path": "logging.enabled",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "level": {
+          "description": "The least severe event the device records, as a syslog severity from 0 (emergencies only) to 7 (debugging, everything).",
+          "x-path": "logging.level",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0,
+                  "maximum": 7
+                }
+              }
+            }
+          ]
+        },
+        "buffered_enabled": {
+          "description": "Whether log messages are kept in a memory buffer on the device itself.",
+          "x-path": "logging.buffered_enabled",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "servers": {
+          "description": "Remote syslog servers the device sends its log messages to.",
+          "x-path": "logging.servers[]",
+          "x-key": null,
+          "x-absent": "empty with state mapped when the file was parsed and no log server is configured",
+          "allOf": [
+            {
+              "$ref": "#/$defs/collection"
+            },
+            {
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Address or hostname of one remote log server."
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "enabled",
+        "level",
+        "buffered_enabled",
+        "servers"
+      ]
+    },
+    "ntp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authenticate": {
+          "description": "Whether the device only accepts time from clock servers that prove their identity with a shared key.",
+          "x-path": "ntp.authenticate",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "servers": {
+          "description": "Network time servers the device synchronises its clock from.",
+          "x-path": "ntp.servers[]",
+          "x-key": null,
+          "x-absent": "empty with state mapped when the file was parsed and no time server is configured",
+          "allOf": [
+            {
+              "$ref": "#/$defs/collection"
+            },
+            {
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Address or hostname of one time server."
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "authenticate",
+        "servers"
+      ]
+    },
+    "snmp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "description": "The weakest SNMP monitoring protocol version the device answers; versions 1 and 2c send the community password in clear text.",
+          "x-path": "snmp.version",
+          "x-absent": "unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "enum": [
+                    "1",
+                    "2c",
+                    "3",
+                    null
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "traps_enabled": {
+          "description": "Whether the device pushes unsolicited alert notifications to a monitoring station.",
+          "x-path": "snmp.traps_enabled",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "communities": {
+          "description": "SNMP community strings, the shared passwords monitoring stations use to read or change settings.",
+          "x-path": "snmp.communities[]",
+          "x-key": null,
+          "x-absent": "empty with state mapped when the file was parsed and no community is configured",
+          "allOf": [
+            {
+              "$ref": "#/$defs/collection"
+            },
+            {
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "string_redacted": {
+                        "description": "A community password with its secret masked at ingest; kept only so communities can be told apart and well-known defaults like public can be flagged.",
+                        "x-path": "snmp.communities[].string_redacted",
+                        "x-absent": "unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "access": {
+                        "description": "Whether a community may only read settings or may also change them.",
+                        "x-path": "snmp.communities[].access",
+                        "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "enum": [
+                                  "ro",
+                                  "rw",
+                                  null
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": []
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "traps_enabled",
+        "communities"
+      ]
+    },
+    "interfaces": {
+      "description": "The physical and logical network ports on the device.",
+      "x-path": "interfaces[]",
+      "x-key": "name",
+      "x-absent": "unknown; a device with no parsed interfaces is never treated as having none",
+      "allOf": [
+        {
+          "$ref": "#/$defs/collection"
+        },
+        {
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "description": "The name of a network port, such as GigabitEthernet0/1.",
+                    "x-path": "interfaces[].name",
+                    "x-absent": "unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "shutdown": {
+                    "description": "Whether a network port is administratively disabled.",
+                    "x-path": "interfaces[].shutdown",
+                    "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "description": {
+                    "description": "Free-text label an administrator attached to a network port.",
+                    "x-path": "interfaces[].description",
+                    "x-absent": "default null meaning no label",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "proxy_arp": {
+                    "description": "Whether a port answers address-resolution requests on behalf of other hosts, which can let traffic bypass intended routing.",
+                    "x-path": "interfaces[].proxy_arp",
+                    "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "ip_redirects": {
+                    "description": "Whether a port sends ICMP redirect messages telling hosts to use a different router.",
+                    "x-path": "interfaces[].ip_redirects",
+                    "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "unreachables": {
+                    "description": "Whether a port replies with ICMP destination-unreachable messages, which can reveal network layout to a scanner.",
+                    "x-path": "interfaces[].unreachables",
+                    "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "switchport_mode": {
+                    "description": "Whether a switch port carries a single VLAN, carries many VLANs as a trunk, negotiates its mode automatically, or is a routed port.",
+                    "x-path": "interfaces[].switchport_mode",
+                    "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "enum": [
+                              "access",
+                              "trunk",
+                              "dynamic",
+                              "routed",
+                              null
+                            ]
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "access_vlan": {
+                    "description": "The VLAN number a single-VLAN access port is placed in.",
+                    "x-path": "interfaces[].access_vlan",
+                    "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                    "allOf": [
+                      {
+                        "$ref": "#/$defs/triple"
+                      },
+                      {
+                        "properties": {
+                          "value": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 1,
+                            "maximum": 4094
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mgmt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vty_lines": {
+          "description": "Virtual terminal lines, the slots remote administrators log in through over SSH or Telnet.",
+          "x-path": "mgmt.vty_lines[]",
+          "x-key": "name",
+          "x-absent": "unknown; a device with no parsed login lines is never treated as having none",
+          "allOf": [
+            {
+              "$ref": "#/$defs/collection"
+            },
+            {
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "description": "Identifies a group of remote login lines, such as vty 0 4. Added in v1 as the join key the mapper needs.",
+                        "x-path": "mgmt.vty_lines[].name",
+                        "x-absent": "unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "transport_input": {
+                        "description": "Which remote login protocols are allowed to connect on a group of remote login lines.",
+                        "x-path": "mgmt.vty_lines[].transport_input",
+                        "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "array",
+                                  "null"
+                                ],
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "ssh",
+                                    "telnet",
+                                    "rlogin",
+                                    "all",
+                                    "none"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "access_class": {
+                        "description": "The name of the access list restricting which source addresses may log in on a group of remote login lines.",
+                        "x-path": "mgmt.vty_lines[].access_class",
+                        "x-absent": "default null meaning no source restriction",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "exec_timeout": {
+                        "description": "How many seconds an idle remote login session stays open before it is closed; 0 means never.",
+                        "x-path": "mgmt.vty_lines[].exec_timeout",
+                        "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "integer",
+                                  "null"
+                                ],
+                                "minimum": 0
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "vty_lines"
+      ]
+    },
+    "acl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lists": {
+          "description": "Access control lists, named sets of rules that permit or deny traffic.",
+          "x-path": "acl.lists[]",
+          "x-key": "name",
+          "x-absent": "empty with state mapped when the file was parsed and no access list is defined",
+          "allOf": [
+            {
+              "$ref": "#/$defs/collection"
+            },
+            {
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "description": "The name or number identifying an access control list.",
+                        "x-path": "acl.lists[].name",
+                        "x-absent": "unknown",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "entries": {
+                        "description": "The ordered rules inside one access control list.",
+                        "x-path": "acl.lists[].entries[]",
+                        "x-key": "seq",
+                        "x-absent": "empty with state mapped when the list exists but has no rules",
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/collection"
+                          },
+                          {
+                            "properties": {
+                              "items": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "seq": {
+                                      "description": "The sequence number giving a rule's position inside an access control list.",
+                                      "x-path": "acl.lists[].entries[].seq",
+                                      "x-absent": "unknown",
+                                      "allOf": [
+                                        {
+                                          "$ref": "#/$defs/triple"
+                                        },
+                                        {
+                                          "properties": {
+                                            "value": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ],
+                                              "minimum": 0
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    "action": {
+                                      "description": "Whether a rule in an access control list allows or blocks matching traffic.",
+                                      "x-path": "acl.lists[].entries[].action",
+                                      "x-absent": "unknown",
+                                      "allOf": [
+                                        {
+                                          "$ref": "#/$defs/triple"
+                                        },
+                                        {
+                                          "properties": {
+                                            "value": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ],
+                                              "enum": [
+                                                "permit",
+                                                "deny",
+                                                null
+                                              ]
+                                            }
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "seq"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "lists"
+      ]
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cdp_enabled": {
+          "description": "Whether the device advertises its identity and software version to neighbours with Cisco Discovery Protocol.",
+          "x-path": "discovery.cdp_enabled",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "lldp_enabled": {
+          "description": "Whether the device advertises its identity to neighbours with the standard Link Layer Discovery Protocol.",
+          "x-path": "discovery.lldp_enabled",
+          "x-absent": "pack-declared default for the OS version range, otherwise unknown",
+          "allOf": [
+            {
+              "$ref": "#/$defs/triple"
+            },
+            {
+              "properties": {
+                "value": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "cdp_enabled",
+        "lldp_enabled"
+      ]
+    }
+  },
+  "required": [
+    "canonical_schema_version",
+    "device",
+    "services",
+    "auth",
+    "session",
+    "logging",
+    "ntp",
+    "snmp",
+    "interfaces",
+    "mgmt",
+    "acl",
+    "discovery"
+  ],
+  "$defs": {
+    "state": {
+      "type": "string",
+      "enum": [
+        "mapped",
+        "defaulted",
+        "unknown"
+      ],
+      "description": "mapped: read from a config line. defaulted: line absent, value is the pack's declared default. unknown: we cannot say; rules requiring this field return NOT_DETERMINED."
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line",
+        "mapping_id",
+        "pack_version"
+      ],
+      "properties": {
+        "line": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "1-based source line number; null for a defaulted value, which has no line."
+        },
+        "mapping_id": {
+          "type": "string",
+          "minLength": 1,
+          "examples": [
+            "ios.ssh.version"
+          ]
+        },
+        "pack_version": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+@\\d+\\.\\d+\\.\\d+$",
+          "examples": [
+            "cisco_ios@1.4.0"
+          ]
+        }
+      }
+    },
+    "triple": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "state",
+        "evidence"
+      ],
+      "properties": {
+        "value": true,
+        "state": {
+          "$ref": "#/$defs/state"
+        },
+        "evidence": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              },
+              "evidence": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "mapped"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "$ref": "#/$defs/evidence",
+                "properties": {
+                  "line": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "defaulted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "$ref": "#/$defs/evidence",
+                "properties": {
+                  "line": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "evidence",
+        "items"
+      ],
+      "description": "state describes the list as a whole. An empty list with state unknown means we failed to read it and must yield NOT_DETERMINED, never a vacuous PASS.",
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/state"
+        },
+        "evidence": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "items": {
+          "type": "array"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "items": {
+                "maxItems": 0
+              },
+              "evidence": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

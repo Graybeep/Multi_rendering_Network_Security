@@ -1,0 +1,582 @@
+openapi: 3.1.0
+info:
+  title: Wi-fight configuration compliance auditor
+  version: 0.1.0
+  description: |
+    Local API served by FastAPI on 127.0.0.1. Authoritative contract between the
+    backend (Claude Code) and the frontend (Codex). Frontend changes request an edit
+    here; nobody invents endpoints client-side.
+
+    Verdicts are three-state. `NOT_DETERMINED` means a field the rule requires was
+    not read; it is never a soft failure and never counted as one.
+
+    Canonical field paths (`services.ssh.version`, `interfaces[].proxy_arp`) are
+    defined in `schemas/canonical.schema.json`.
+servers:
+  - url: http://127.0.0.1:8000
+    description: Real backend (make api)
+  - url: http://127.0.0.1:8001
+    description: Prism mock of this file (make mock)
+
+tags:
+  - name: scans
+  - name: training
+  - name: catalog
+
+paths:
+  /api/scans:
+    post:
+      tags: [scans]
+      operationId: createScan
+      summary: Upload a batch of configuration files and start a scan
+      description: |
+        Accepts individual config files and/or zip archives. Each file becomes an
+        independent device job; a malformed file becomes a device with status
+        `error`, never a failed batch.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files, frameworks]
+              properties:
+                files:
+                  type: array
+                  minItems: 1
+                  items: {type: string, format: binary}
+                frameworks:
+                  type: array
+                  minItems: 1
+                  items: {$ref: '#/components/schemas/Framework'}
+            encoding:
+              files: {contentType: application/octet-stream}
+      responses:
+        '202':
+          description: Scan accepted and queued
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScanCreated'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+
+  /api/scans/{scan_id}:
+    get:
+      tags: [scans]
+      operationId: getScan
+      summary: Scan status, progress and per-device summaries
+      description: Poll this while `status` is `queued` or `running`; devices appear as they finish.
+      parameters: [{$ref: '#/components/parameters/ScanId'}]
+      responses:
+        '200':
+          description: Scan
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Scan'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/scans/{scan_id}/devices/{device_id}:
+    get:
+      tags: [scans]
+      operationId: getDeviceFindings
+      summary: Findings for one device, each with evidence and remediation
+      parameters:
+        - {$ref: '#/components/parameters/ScanId'}
+        - {$ref: '#/components/parameters/DeviceId'}
+      responses:
+        '200':
+          description: Device findings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeviceFindings'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Device has not finished evaluating, or ended in error
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+
+  /api/scans/{scan_id}/devices/{device_id}/report:
+    get:
+      tags: [scans]
+      operationId: getDeviceReport
+      summary: Per-device PDF report
+      parameters:
+        - {$ref: '#/components/parameters/ScanId'}
+        - {$ref: '#/components/parameters/DeviceId'}
+      responses:
+        '200':
+          description: PDF report
+          content:
+            application/pdf:
+              schema: {type: string, format: binary}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Device has not finished evaluating, or ended in error
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+
+  /api/scans/{scan_id}/clusters:
+    get:
+      tags: [training]
+      operationId: listClusters
+      summary: Unrecognised-line clusters for a scan, sorted by device count descending
+      parameters: [{$ref: '#/components/parameters/ScanId'}]
+      responses:
+        '200':
+          description: Cluster queue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scan_id, clusters]
+                properties:
+                  scan_id: {$ref: '#/components/schemas/Id'}
+                  clusters:
+                    type: array
+                    description: Sorted by `device_count` descending.
+                    items: {$ref: '#/components/schemas/Cluster'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/clusters/{cluster_id}/suggestions:
+    get:
+      tags: [training]
+      operationId: getClusterSuggestions
+      summary: Ranked candidate canonical fields for a cluster
+      description: |
+        Candidates pre-fill a form. They are never applied automatically. The
+        administrator may pick any field from `/api/schema/fields` instead.
+      parameters: [{$ref: '#/components/parameters/ClusterId'}]
+      responses:
+        '200':
+          description: Ranked suggestions, highest score first
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Suggestions'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/clusters/{cluster_id}/confirm:
+    post:
+      tags: [training]
+      operationId: confirmCluster
+      summary: Human confirms a mapping; writes a learned pack fragment
+      description: |
+        With `dry_run=true` nothing is written and the response shows the exact
+        pack fragment that would be written, for the "show before writing" step.
+        Without it, the fragment is appended to `packs/learned/<vendor>.yaml`,
+        the registry reloads and the parse cache is invalidated.
+      parameters:
+        - {$ref: '#/components/parameters/ClusterId'}
+        - name: dry_run
+          in: query
+          required: false
+          schema: {type: boolean, default: false}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConfirmRequest'}
+      responses:
+        '200':
+          description: Fragment written (or previewed when dry_run=true)
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConfirmResult'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: Mapping would overlap an existing mapping ambiguously; nothing written
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
+  /api/scans/{scan_id}/reevaluate:
+    post:
+      tags: [scans]
+      operationId: reevaluateScan
+      summary: Re-run a scan from the parse cache with current packs
+      parameters: [{$ref: '#/components/parameters/ScanId'}]
+      responses:
+        '202':
+          description: Re-evaluation queued; poll getScan
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ScanCreated'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/schema/fields:
+    get:
+      tags: [catalog]
+      operationId: listSchemaFields
+      summary: Canonical fields with plain-English descriptions
+      responses:
+        '200':
+          description: Canonical field catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schema_version, fields]
+                properties:
+                  schema_version: {type: string}
+                  fields:
+                    type: array
+                    items: {$ref: '#/components/schemas/SchemaField'}
+
+  /api/packs:
+    get:
+      tags: [catalog]
+      operationId: listPacks
+      summary: Installed vendor, rule, fix and learned packs with versions
+      responses:
+        '200':
+          description: Installed packs
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [packs]
+                properties:
+                  packs:
+                    type: array
+                    items: {$ref: '#/components/schemas/Pack'}
+
+components:
+  parameters:
+    ScanId:
+      name: scan_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Id'}
+    DeviceId:
+      name: device_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Id'}
+    ClusterId:
+      name: cluster_id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Id'}
+
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotFound:
+      description: No such resource
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    TooLarge:
+      description: Upload exceeds the size limit
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unprocessable:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+
+  schemas:
+    Id:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,64}$'
+
+    Framework:
+      type: string
+      enum: [cis, nist, stig, iso]
+
+    Verdict:
+      type: string
+      enum: [PASS, FAIL, NOT_DETERMINED]
+      description: NOT_DETERMINED means a required field was not read. It is not a failure.
+
+    Severity:
+      type: string
+      enum: [critical, high, medium, low, info]
+
+    FieldState:
+      type: string
+      enum: [mapped, defaulted, unknown]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string, description: Stable machine-readable error code}
+        message: {type: string, description: Human-readable explanation}
+        field: {type: [string, 'null'], description: 'Offending request or pack field, when there is one'}
+
+    ScanCreated:
+      type: object
+      required: [scan_id]
+      properties:
+        scan_id: {$ref: '#/components/schemas/Id'}
+
+    ScanStatus:
+      type: string
+      enum: [queued, running, completed, failed]
+
+    DeviceStatus:
+      type: string
+      enum: [queued, parsing, evaluating, done, error]
+
+    Coverage:
+      type: object
+      description: |
+        How much of the canonical model was actually read. Shown beside every
+        compliance figure; a percentage without coverage has no denominator.
+      required: [mapped, defaulted, unknown, ratio]
+      properties:
+        mapped: {type: integer, minimum: 0}
+        defaulted: {type: integer, minimum: 0}
+        unknown: {type: integer, minimum: 0}
+        ratio:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: (mapped + defaulted) / (mapped + defaulted + unknown)
+
+    VerdictCounts:
+      type: object
+      required: [pass, fail, not_determined]
+      properties:
+        pass: {type: integer, minimum: 0}
+        fail: {type: integer, minimum: 0}
+        not_determined: {type: integer, minimum: 0}
+
+    DeviceIdentity:
+      type: object
+      description: Fingerprint from ingest. Any element may be null if not detected.
+      required: [hostname, vendor, os_family, os_version, model, serial]
+      properties:
+        hostname: {type: [string, 'null']}
+        vendor: {type: [string, 'null']}
+        os_family: {type: [string, 'null']}
+        os_version: {type: [string, 'null']}
+        model: {type: [string, 'null']}
+        serial: {type: [string, 'null']}
+
+    DeviceSummary:
+      type: object
+      required: [device_id, filename, status]
+      properties:
+        device_id: {$ref: '#/components/schemas/Id'}
+        filename: {type: string}
+        status: {$ref: '#/components/schemas/DeviceStatus'}
+        error:
+          type: [string, 'null']
+          description: Set only when status is error. Never contains raw config text.
+        vendor_pack:
+          type: [string, 'null']
+          description: Detected vendor pack as id@version; null when detection was ambiguous or failed.
+        detection_ambiguous:
+          type: boolean
+          description: True when two vendor packs tied on detection; the device is not guessed.
+        identity: {$ref: '#/components/schemas/DeviceIdentity'}
+        verdicts: {$ref: '#/components/schemas/VerdictCounts'}
+        coverage: {$ref: '#/components/schemas/Coverage'}
+
+    Scan:
+      type: object
+      required: [scan_id, status, frameworks, created_at, progress, devices]
+      properties:
+        scan_id: {$ref: '#/components/schemas/Id'}
+        status: {$ref: '#/components/schemas/ScanStatus'}
+        frameworks:
+          type: array
+          items: {$ref: '#/components/schemas/Framework'}
+        created_at: {type: string, format: date-time}
+        progress:
+          type: object
+          required: [total, done, error]
+          properties:
+            total: {type: integer, minimum: 0}
+            done: {type: integer, minimum: 0}
+            error: {type: integer, minimum: 0}
+        devices:
+          type: array
+          items: {$ref: '#/components/schemas/DeviceSummary'}
+
+    EvidenceLine:
+      type: object
+      description: One cited config line. Text is redacted at ingest; secrets appear as ****.
+      required: [canonical_field, state, line_no, text, mapping_id, pack_version]
+      properties:
+        canonical_field: {type: string, examples: ['services.ssh.version']}
+        state: {$ref: '#/components/schemas/FieldState'}
+        value:
+          description: The canonical value. For `defaulted` this is the pack-declared default the verdict used.
+        line_no:
+          type: [integer, 'null']
+          minimum: 1
+          description: Null when the value was defaulted (no line exists) or unknown.
+        text:
+          type: [string, 'null']
+          description: Redacted source line; null when line_no is null.
+        mapping_id: {type: [string, 'null']}
+        pack_version: {type: [string, 'null'], description: 'Vendor pack as id@version'}
+
+    Remediation:
+      type: object
+      required: [fix_id, commands, reload_required, rollback]
+      properties:
+        fix_id: {type: string}
+        commands:
+          type: array
+          items: {type: string}
+          description: Rendered vendor CLI, idempotent (safe to paste twice).
+        reload_required: {type: boolean}
+        rollback:
+          type: array
+          items: {type: string}
+        operator_input:
+          type: array
+          items: {type: string}
+          description: Placeholders such as <NEW_SECRET> the operator must replace before pasting. Highlight them.
+        note:
+          type: [string, 'null']
+          description: Safety note to show with the commands, e.g. lock-out risk.
+
+    Finding:
+      type: object
+      required: [rule_id, title, framework, severity, verdict, rule_pack_version, evidence, missing_fields, remediation]
+      properties:
+        rule_id: {type: string, examples: ['CIS-NET-1.2.3']}
+        title: {type: string}
+        control:
+          type: [string, 'null']
+          description: Benchmark control ID. Null until a human has verified the citation; show "uncited", not a guess.
+        framework: {$ref: '#/components/schemas/Framework'}
+        severity: {$ref: '#/components/schemas/Severity'}
+        verdict: {$ref: '#/components/schemas/Verdict'}
+        rule_pack_version: {type: string, description: 'Rule pack as id@version'}
+        evidence:
+          type: array
+          items: {$ref: '#/components/schemas/EvidenceLine'}
+        missing_fields:
+          type: array
+          items: {type: string}
+          description: Required canonical fields whose state was unknown. Non-empty only for NOT_DETERMINED.
+        fix_pack_version: {type: [string, 'null'], description: 'Fix pack as id@version, when remediation is present'}
+        error:
+          type: [string, 'null']
+          description: Set when a rule could not be evaluated (pack bug); the verdict is then NOT_DETERMINED.
+        remediation:
+          description: Present only for FAIL with a fix template for this vendor and OS version.
+          oneOf:
+            - {$ref: '#/components/schemas/Remediation'}
+            - {type: 'null'}
+
+    DeviceFindings:
+      allOf:
+        - {$ref: '#/components/schemas/DeviceSummary'}
+        - type: object
+          required: [findings]
+          properties:
+            findings:
+              type: array
+              items: {$ref: '#/components/schemas/Finding'}
+
+    Cluster:
+      type: object
+      required: [cluster_id, vendor, signature, sample_line, device_count, occurrence_count]
+      properties:
+        cluster_id: {$ref: '#/components/schemas/Id'}
+        vendor: {type: string, description: Vendor pack id the lines were read under}
+        signature:
+          type: string
+          description: Normalised template with typed placeholders, e.g. <INT>, <IPV4>, <IFACE>.
+        sample_line:
+          type: string
+          description: One redacted raw line from the cluster.
+        device_count: {type: integer, minimum: 1, description: Distinct devices containing this pattern}
+        occurrence_count: {type: integer, minimum: 1, description: Total matching lines across the batch}
+        scope:
+          type: [string, 'null']
+          description: Enclosing block template when the line is nested, e.g. "interface <IFACE>".
+
+    Suggestion:
+      type: object
+      required: [canonical_field, score, tier, description]
+      properties:
+        canonical_field: {type: string}
+        score: {type: number, minimum: 0, maximum: 1}
+        tier:
+          type: string
+          enum: [lexical, embedding, llm]
+        description: {type: string, description: The canonical field description the line was ranked against}
+
+    Suggestions:
+      type: object
+      required: [cluster_id, candidates]
+      properties:
+        cluster_id: {$ref: '#/components/schemas/Id'}
+        candidates:
+          type: array
+          items: {$ref: '#/components/schemas/Suggestion'}
+
+    ConfirmRequest:
+      type: object
+      required: [canonical_field, absent]
+      additionalProperties: false
+      properties:
+        canonical_field:
+          type: string
+          description: Any path from /api/schema/fields, not only a suggested one.
+        absent:
+          type: string
+          enum: [unknown, default]
+          description: What a device means when the line is missing.
+        default:
+          description: Required when absent is "default". Must match the canonical field's type.
+        value:
+          description: Fixed value to assign when the line matches and carries no capture (e.g. a bare flag line).
+        author:
+          type: [string, 'null']
+          description: Who confirmed the mapping; recorded as provenance.
+
+    ConfirmResult:
+      type: object
+      required: [written, pack_path, pack_version, mapping_id, fragment_yaml]
+      properties:
+        written: {type: boolean, description: False when dry_run=true}
+        pack_path: {type: string, examples: ['packs/learned/cisco_ios.yaml']}
+        pack_version: {type: string, description: Version the learned pack has (or would have) after the write}
+        mapping_id: {type: string}
+        fragment_yaml: {type: string, description: Exact YAML that is (or would be) appended}
+
+    SchemaField:
+      type: object
+      required: [path, type, description, absent, collection]
+      properties:
+        path: {type: string, examples: ['interfaces[].proxy_arp']}
+        type: {type: string, description: JSON type of the field's value}
+        enum:
+          type: [array, 'null']
+          items: {}
+        description: {type: string}
+        absent: {type: string, description: Default absent-semantics guidance}
+        collection: {type: boolean, description: 'True for a collection path ending in []'}
+
+    Pack:
+      type: object
+      required: [id, kind, version, source]
+      properties:
+        id: {type: string}
+        kind:
+          type: string
+          enum: [vendor, rule, fix, learned]
+        version: {type: string}
+        source:
+          type: string
+          enum: [shipped, learned]
+        framework: {$ref: '#/components/schemas/Framework'}
+        vendor: {type: [string, 'null']}
+        mapping_count: {type: [integer, 'null'], minimum: 0}
+        rule_count: {type: [integer, 'null'], minimum: 0}

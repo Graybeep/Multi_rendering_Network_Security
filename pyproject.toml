@@ -1,0 +1,32 @@
+[project]
+name = "wifight-auditor"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "pyyaml>=6",
+  "jsonschema>=4.21",
+  "jmespath>=1.0",
+  "defusedxml>=0.7",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "regex>=2024.4",
+  "reportlab>=4.0",
+  "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+scan = "src.cli.main:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.10", "openapi-spec-validator>=0.7", "types-PyYAML", "types-regex", "types-jmespath", "types-reportlab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
