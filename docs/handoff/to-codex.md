@@ -57,3 +57,15 @@ in Phase 3. A Junos config with no Junos pack currently audits as 0 FAIL / 15 NO
 **Not landed:** `junos.yaml` (2.2), the FastAPI server. **No change to `docs/openapi.yaml`.**
 **Unblocked for you:** nothing new on the contract. If you want a real beat-2 screen, the fixture
 `fixtures/configs/batfish_example_juniper/as1border1.cfg` produces an all-NOT_DETERMINED device via the CLI.
+
+---
+
+## 2026-10-06 · Junos pack (PLAN 2.2)
+
+**Landed:** `packs/vendors/junos.yaml`. The 15 CIS rules run unchanged on Junos. The SRX fixtures audit to 7 FAIL / 2 PASS /
+6 NOT_DETERMINED, each finding citing its `set` line. Junos output validates against `DeviceFindings`.
+**Not landed:** Junos fix templates, so Junos FAILs have `remediation: null`. Render that as "no automated fix", not as an error.
+New: a device can carry the warning "configuration is inherited from elsewhere in the file and not resolved…". Show device
+warnings next to the verdict counts. **No change to `docs/openapi.yaml`.**
+**Unblocked for you:** real two-vendor output for the results screen:
+`python -m src.cli.main fixtures/configs/batfish_srx_testbed --framework cis --out ./reports`.
