@@ -39,6 +39,7 @@
         "defaults": {"type": "object", "description": "Collections only: values for named groups that did not participate."},
         "auto_key": {"type": "boolean", "description": "Collections only: key missing from the line is assigned by position (10, 20, …) as defaulted."},
         "priority": {"type": "integer"},
+        "keep": {"enum": ["min", "max"], "description": "Scalars only: when several lines map this field, keep the smallest or largest value instead of the last. For list-valued settings such as accepted protocol versions."},
         "fixture": {"type": "string", "minLength": 1, "description": "Config snippet this mapping must match."},
         "expect": {"description": "Value the fixture must produce."},
         "source": {"enum": ["shipped", "learned"]},
@@ -76,7 +77,11 @@
             "serial": {"$ref": "#/$defs/fact"}
           }
         },
-        "mappings": {"type": "array", "items": {"$ref": "#/$defs/mapping"}}
+        "mappings": {"type": "array", "items": {"$ref": "#/$defs/mapping"}},
+        "unresolved_inheritance": {
+          "type": "array", "items": {"type": "string", "minLength": 1},
+          "description": "Regexes searched in every effective statement. A hit means the device inherits configuration from elsewhere in the file that this pack does not resolve, so absent fields stay unknown and no collection is taken as complete."
+        }
       }
     },
     "fact": {

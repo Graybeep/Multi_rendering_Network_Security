@@ -121,6 +121,21 @@ between reader and mapper.
 mappings outrank base packs by default. The loader must reject ambiguous overlaps
 rather than picking nondeterministically.
 
+`keep: min|max` (scalars only) is for a setting written as a list over several
+lines, such as Junos `protocol-version v1` plus `protocol-version v2`. It keeps the
+weakest or strongest value instead of the last line. Without it, line order decides
+the verdict.
+
+`unresolved_inheritance:` (pack level) lists regexes searched in every effective
+statement, e.g. Junos `apply-groups`. A hit means the file inherits configuration
+the pack does not resolve. Absent fields then stay `unknown` instead of defaulted,
+and every collection is marked unread, because a group can add items the local lines
+do not show.
+
+Flat-syntax packs (`reader: set_commands`) see the whole path in each statement, so
+collection keys are named groups in `match`, and `scope` is not used. Fixtures are
+written with the `set` verb, as the device prints them.
+
 Detection signatures must be anchored and weighted. `^switchname` discriminates;
 `^hostname` does not. Two packs tying is an explicit ambiguous state, never
 first-match-wins.

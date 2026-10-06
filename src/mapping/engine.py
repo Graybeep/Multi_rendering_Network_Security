@@ -168,6 +168,13 @@ class _Writer:
                 value = _convert(captured, m.spec.value_schema, m.raw.get("cast"), m.raw.get("map"))
         if value is _NOT_UNDERSTOOD:
             return False
+        # A list-valued setting spread over several lines: the weakest (or strongest) value is the truth,
+        # not whichever line happened to come last.
+        held = parent[last.name]
+        keep = m.raw.get("keep")
+        if keep and held["state"] == "mapped" and held["value"] is not None and (
+                value >= held["value"] if keep == "min" else value <= held["value"]):
+            return True
         parent[last.name] = _mapped(value, line, m.id, m.pack_version)
         return True
 
@@ -179,6 +186,8 @@ class _Writer:
             value = m.raw["value"] if m.has_value else _convert(captured, m.spec.value_schema, None, None)
             if value is _NOT_UNDERSTOOD:
                 return False
+            if any(it["value"] == value for it in coll["items"]):  # one server named on several lines
+                return True
             coll["items"].append(_mapped(value, line, m.id, m.pack_version))
             coll["state"] = "mapped"
             return True
@@ -239,6 +248,36 @@ def _apply_absent(model: Model, pack: VendorPack, os_version: str | None) -> Non
                 continue
             if in_range(os_version, m.raw["default_os_version"]):
                 holder[name] = _defaulted(m.raw["default"], m.id, m.pack_version)
+
+
+def _inheritance_line(pack: VendorPack, nodes: list[Node], warnings: list[str]) -> int | None:
+    """First effective statement that pulls in configuration the pack does not resolve (e.g. Junos apply-groups)."""
+    if not pack.inheritance:
+        return None
+    for root in nodes:
+        for node in root.walk():
+            for pattern in pack.inheritance:
+                try:
+                    if pattern.search(node.text):
+                        return node.line_no
+                except TimeoutError:
+                    warnings.append(f"inheritance check timed out on line {node.line_no}")
+                    return node.line_no  # cannot rule it out, so treat it as inherited
+    return None
+
+
+def _all_collections(node: Any) -> list[dict[str, Any]]:
+    """Every collection holder in the model, nested ones included."""
+    found: list[dict[str, Any]] = []
+    if isinstance(node, dict):
+        if "items" in node and "state" in node:
+            found.append(node)
+            for item in node["items"]:
+                found.extend(_all_collections(item))
+        else:
+            for v in node.values():
+                found.extend(_all_collections(v))
+    return found
 
 
 def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue: Catalogue,
@@ -311,7 +350,17 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
     for root in nodes:
         visit(root, None)
 
-    os_version = device["os_version"]["value"]
-    _apply_absent(model, pack, os_version)
+    inherited = _inheritance_line(pack, nodes, result.warnings)
+    if inherited is None:
+        _apply_absent(model, pack, device["os_version"]["value"])
+    else:
+        result.warnings.append(
+            f"line {inherited}: configuration is inherited from elsewhere in the file and not resolved; "
+            "settings not stated directly are NOT_DETERMINED")
+        # A group can add items (users, interfaces) the local lines do not show. The schema has no
+        # "partly known" list, and keeping the visible items as a complete list risks a false PASS,
+        # so every list becomes unread: NOT_DETERMINED, at the cost of FAILs on visible items.
+        for holder in _all_collections(model):
+            holder["state"], holder["items"] = "unknown", []
     catalogue.validate(model)
     return result

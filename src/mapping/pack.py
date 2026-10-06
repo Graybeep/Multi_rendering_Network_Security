@@ -70,6 +70,7 @@ class VendorPack:
     facts: dict[str, tuple[SafePattern, int]]
     mappings: list[Mapping]
     learned_version: str | None = None
+    inheritance: list[SafePattern] = field(default_factory=list)
     dispatch: dict[str, list[Mapping]] = field(default_factory=dict)
     wildcard: list[Mapping] = field(default_factory=list)
 
@@ -127,7 +128,9 @@ def build_mapping(raw: dict[str, Any], catalogue: Catalogue, pack_version: str,
             raise PackError(f"{loc}: field match: named group(s) {sorted(unknown_groups)} are not item attributes")
         if spec.key and spec.key not in groups and not raw.get("auto_key"):
             raise PackError(f"{loc}: field match: must capture the key attribute {spec.key!r} or set auto_key")
-    elif "value" not in raw:
+    if "keep" in raw and collection:
+        raise PackError(f"{loc}: field keep: only scalar fields can keep a min or max")
+    if not (collection and spec.object_items) and "value" not in raw:
         if pattern._compiled.groups == 0:
             raise PackError(f"{loc}: field value: no fixed value and no capture group")
         if raw.get("cast") == "min_sec" and pattern._compiled.groups < 1:
@@ -174,8 +177,10 @@ def load_vendor_pack(path: Path, catalogue: Catalogue) -> VendorPack:
         mappings.append(build_mapping(raw, catalogue, tag, path.name, 0))
     _check_absent_consistency(mappings, path.name)
 
+    inheritance = [_compile(src, path.name, f"unresolved_inheritance/{i}")
+                   for i, src in enumerate(doc.get("unresolved_inheritance") or [])]
     pack = VendorPack(doc["id"], doc["version"], doc["vendor"], doc["os_family"], doc["reader"],
-                      detect, int(doc.get("min_score", 1)), facts, mappings)
+                      detect, int(doc.get("min_score", 1)), facts, mappings, inheritance=inheritance)
     pack.index()
     return pack
 
@@ -195,7 +200,8 @@ def merge_learned(pack: VendorPack, path: Path, catalogue: Catalogue) -> VendorP
         seen.add(raw["id"])
         learned.append(build_mapping(raw, catalogue, tag, path.name, LEARNED_PRIORITY))
     merged = VendorPack(pack.id, pack.version, pack.vendor, pack.os_family, pack.reader, pack.detect,
-                        pack.min_score, pack.facts, pack.mappings + learned, doc["version"])
+                        pack.min_score, pack.facts, pack.mappings + learned, doc["version"],
+                        inheritance=pack.inheritance)
     _check_absent_consistency(merged.mappings, path.name)
     merged.index()
     return merged
