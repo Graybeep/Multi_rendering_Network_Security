@@ -357,10 +357,11 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
         result.warnings.append(
             f"line {inherited}: configuration is inherited from elsewhere in the file and not resolved; "
             "settings not stated directly are NOT_DETERMINED")
-        # A group can add items (users, interfaces) the local lines do not show. The schema has no
-        # "partly known" list, and keeping the visible items as a complete list risks a false PASS,
-        # so every list becomes unread: NOT_DETERMINED, at the cost of FAILs on visible items.
+        # A group can add items (users, interfaces) the local lines do not show. Visible items are real,
+        # so they stay; the list is marked incomplete and only rules that opt in may judge it. A list
+        # with nothing visible stays unread, never "read and empty".
         for holder in _all_collections(model):
-            holder["state"], holder["items"] = "unknown", []
+            if holder["items"]:
+                holder["complete"] = False
     catalogue.validate(model)
     return result

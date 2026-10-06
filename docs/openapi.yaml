@@ -462,7 +462,7 @@ components:
         missing_fields:
           type: array
           items: {type: string}
-          description: Required canonical fields whose state was unknown. Non-empty only for NOT_DETERMINED.
+          description: Required canonical fields whose state was unknown, or lists (path ending in []) that were read only in part. Non-empty only for NOT_DETERMINED.
         fix_pack_version: {type: [string, 'null'], description: 'Fix pack as id@version, when remediation is present'}
         error:
           type: [string, 'null']

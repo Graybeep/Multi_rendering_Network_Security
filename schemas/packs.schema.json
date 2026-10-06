@@ -121,6 +121,7 @@
         "assert": {"type": "string", "minLength": 1, "description": "JMESPath; must evaluate to a boolean."},
         "severity": {"enum": ["critical", "high", "medium", "low", "info"]},
         "fix": {"type": "string"},
+        "partial": {"enum": ["counterexample_sufficient", "lower_bound"], "description": "How the rule may judge a list that is read but incomplete (complete: false). counterexample_sufficient (for_each rules): a visible item that fails is a FAIL; otherwise NOT_DETERMINED. lower_bound (rules like length(x) > 0): true on the visible items is a PASS, since more items cannot break it; otherwise NOT_DETERMINED. Omitted: NOT_DETERMINED."},
         "fixtures": {
           "type": "object", "additionalProperties": false, "required": ["pass", "fail"],
           "properties": {"pass": {"type": "object"}, "fail": {"type": "object"}},

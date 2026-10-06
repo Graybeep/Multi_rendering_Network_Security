@@ -1583,6 +1583,10 @@
         },
         "items": {
           "type": "array"
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "False when the visible items are real but more may exist that we could not read (e.g. inherited configuration). Omitted means true. Only a read list can be incomplete."
         }
       },
       "allOf": [
@@ -1601,6 +1605,25 @@
               },
               "evidence": {
                 "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "complete"
+            ],
+            "properties": {
+              "complete": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "mapped"
               }
             }
           }

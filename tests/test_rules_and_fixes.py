@@ -100,3 +100,64 @@ def test_per_interface_fix_names_each_failing_interface(snapshot: Snapshot, cata
     assert "Ethernet0/0" not in names  # shut down in the config
     assert names == ["Loopback0", "GigabitEthernet0/0", "GigabitEthernet1/0", "GigabitEthernet2/0",
                      "GigabitEthernet3/0"]
+
+
+def _incomplete(model: dict[str, Any], path: tuple[str, ...]) -> dict[str, Any]:
+    node = model
+    for seg in path:
+        node = node[seg]
+    node["complete"] = False
+    return model
+
+
+def test_incomplete_list_with_visible_failure_is_fail(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    model = model_from_fragment(catalogue, {"auth.local_users[]": [
+        {"name": "a", "password_algorithm": "md5"}, {"name": "b", "password_algorithm": "scrypt"}]})
+    v = evaluate(_rule(snapshot, "cis.local_users.strong_hash"), _incomplete(model, ("auth", "local_users")))
+    assert v.verdict == FAIL and [i["name"]["value"] for i in v.failing_items] == ["a"]
+
+
+def test_incomplete_list_without_visible_failure_is_not_determined(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    model = model_from_fragment(catalogue, {"auth.local_users[]": [{"name": "b", "password_algorithm": "scrypt"}]})
+    v = evaluate(_rule(snapshot, "cis.local_users.strong_hash"), _incomplete(model, ("auth", "local_users")))
+    assert v.verdict == NOT_DETERMINED and v.missing_fields == ["auth.local_users[]"]
+
+
+def test_incomplete_list_lower_bound_met_is_pass(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    model = model_from_fragment(catalogue, {"logging.servers[]": ["10.0.0.5"]})
+    rule = _rule(snapshot, "cis.logging.remote_host")
+    assert evaluate(rule, _incomplete(model, ("logging", "servers"))).verdict == PASS
+
+
+def test_rule_without_partial_opt_in_stays_not_determined(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    rule = _rule(snapshot, "cis.local_users.strong_hash")
+    raw = {k: v for k, v in rule.raw.items() if k != "partial"}
+    plain = type(rule)(raw, rule.compiled, rule.pack_tag, rule.framework)
+    model = model_from_fragment(catalogue, {"auth.local_users[]": [{"name": "a", "password_algorithm": "md5"}]})
+    assert evaluate(plain, _incomplete(model, ("auth", "local_users"))).verdict == NOT_DETERMINED
+
+
+_PARTIAL_RULE = """id: t
+version: 1.0.0
+framework: cis
+rules:
+  - id: t.r
+    title: t
+    applies_to: {os_family: '*'}
+    requires: ['auth.local_users[].password_algorithm']
+    assert: "password_algorithm == 'scrypt'"
+EXTRA    severity: low
+    fixtures:
+      pass: {'auth.local_users[]': [{name: a, password_algorithm: scrypt}]}
+      fail: {'auth.local_users[]': [{name: a, password_algorithm: md5}]}
+"""
+
+
+@pytest.mark.parametrize("extra", ["    for_each: 'auth.local_users[]'\n    partial: lower_bound\n",
+                                   "    partial: counterexample_sufficient\n"])
+def test_inconsistent_partial_is_rejected(tmp_path: Any, catalogue: Catalogue, extra: str) -> None:
+    from src.packs import PackError
+    from src.rules.evaluator import load_rule_pack
+    (tmp_path / "t.yaml").write_text(_PARTIAL_RULE.replace("EXTRA", extra))
+    with pytest.raises(PackError, match="field partial"):
+        load_rule_pack(tmp_path / "t.yaml", catalogue)

@@ -125,13 +125,17 @@ def test_applied_group_makes_unstated_settings_not_determined(snapshot: Snapshot
     text = (SRX / "junos-srx-1.cfg").read_text() + "set system apply-groups site-defaults\n"
     model, warnings = _model(snapshot, catalogue, text)
     assert "defaulted" not in _states(model)
-    # A group can add users we cannot see, so the list is unread rather than complete.
-    users = model["auth"]["local_users"]
-    assert (users["state"], users["items"]) == ("unknown", [])
     assert model["services"]["http"]["enabled"]["state"] == "mapped"  # stated directly, so still known
     assert any("not resolved" in w for w in warnings)
+    # Visible users are real; a group could add more, so the list is read but incomplete.
+    users = model["auth"]["local_users"]
+    assert (users["state"], users["complete"], len(users["items"])) == ("mapped", False, 4)
+    assert model["logging"]["servers"]["state"] == "unknown"  # nothing visible: unread, not "read and empty"
+
     verdicts = _verdicts(snapshot, catalogue, text)
-    assert verdicts["cis.local_users.strong_hash"] == "NOT_DETERMINED"
+    assert verdicts["cis.local_users.strong_hash"] == "FAIL"  # a visible $1$ user is a sound counterexample
+    assert verdicts["cis.interfaces.no_proxy_arp"] == "NOT_DETERMINED"  # nothing visible fails; unseen could
+    assert verdicts["cis.logging.remote_host"] == "NOT_DETERMINED"
     assert verdicts["cis.login_banner"] == "NOT_DETERMINED"
     assert verdicts["cis.http.disabled"] == "FAIL"
 

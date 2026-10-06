@@ -3,6 +3,8 @@
 Order of decision, per rule:
   1. any `requires` field unknown            → NOT_DETERMINED, assertion not evaluated
   2. `for_each` collection of unknown state  → NOT_DETERMINED (never a vacuous PASS)
+  2b. a required collection read but incomplete → NOT_DETERMINED, unless the rule opts in with
+      `partial:` and the visible items already settle it (a failing item, or a lower bound met)
   3. evaluate the JMESPath assertion         → PASS / FAIL
 """
 
@@ -103,6 +105,11 @@ def load_rule_pack(path: Path, catalogue: Catalogue) -> RulePack:
         stray = _field_names(compiled.parsed) - allowed
         if stray:
             raise PackError(f"{loc}: field assert: reads {sorted(stray)} which are not in requires")
+        partial = raw.get("partial")
+        if partial == "counterexample_sufficient" and each is None:
+            raise PackError(f"{loc}: field partial: counterexample_sufficient needs for_each")
+        if partial == "lower_bound" and each is not None:
+            raise PackError(f"{loc}: field partial: lower_bound is for whole-list assertions, not for_each")
         rule = Rule(raw, compiled, tag, doc["framework"])
         _check_fixtures(rule, catalogue, loc)
         rules.append(rule)
@@ -144,6 +151,31 @@ def _items(model: Model, collection: str) -> tuple[str, list[dict[str, Any]]]:
     return node["state"], node["items"]
 
 
+def _incomplete(model: Model, paths: list[str]) -> list[str]:
+    """Collections on the required paths that were read but may hold more items than we saw."""
+    found: list[str] = []
+    for path in paths:
+        frontier: list[Any] = [model]
+        prefix = ""
+        for seg in parse_path(path):
+            prefix = f"{prefix}.{seg.name}" if prefix else seg.name
+            nxt: list[Any] = []
+            for node in frontier:
+                child = node.get(seg.name) if isinstance(node, dict) else None
+                if child is None:
+                    continue
+                if seg.collection:
+                    if child.get("complete") is False and f"{prefix}[]" not in found:
+                        found.append(f"{prefix}[]")
+                    nxt.extend(child["items"])
+                else:
+                    nxt.append(child)
+            frontier = nxt
+            if seg.collection:
+                prefix += "[]"
+    return found
+
+
 def _truth(value: Any) -> bool | None:
     return value if isinstance(value, bool) else None
 
@@ -154,10 +186,16 @@ def evaluate(rule: Rule, model: Model) -> Verdict:
         return Verdict(rule, NOT_DETERMINED, missing, [])
 
     each = rule.for_each
+    partial = rule.raw.get("partial")
+    incomplete = _incomplete(model, rule.requires)
+    if incomplete and partial is None:
+        return Verdict(rule, NOT_DETERMINED, incomplete, [])
     if each is None:
         result = _truth(rule.compiled.search(project(model)))
         if result is None:
             return Verdict(rule, NOT_DETERMINED, [], [], "assertion did not return a boolean")
+        if incomplete and not (partial == "lower_bound" and result):
+            return Verdict(rule, NOT_DETERMINED, incomplete, [])  # unseen items could change a lower-bound miss
         return Verdict(rule, PASS if result else FAIL, [], [])
 
     state, items = _items(model, each)
@@ -170,6 +208,8 @@ def evaluate(rule: Rule, model: Model) -> Verdict:
             return Verdict(rule, NOT_DETERMINED, [], [], "assertion did not return a boolean")
         if not result:
             failing.append(item)
+    if incomplete and not failing:
+        return Verdict(rule, NOT_DETERMINED, incomplete, [])  # an unseen item could still fail
     return Verdict(rule, FAIL if failing else PASS, [], failing)
 
 

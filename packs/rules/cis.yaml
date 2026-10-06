@@ -3,7 +3,7 @@
 # benchmark control ID from the licensed CIS document — do not guess IDs.
 # Fixtures are canonical-model fragments, so they stay vendor-neutral.
 id: cis
-version: 1.0.0
+version: 1.1.0
 framework: cis
 rules:
   - id: cis.ssh.version_2
@@ -85,6 +85,7 @@ rules:
     for_each: 'auth.local_users[]'
     requires: ['auth.local_users[].password_algorithm']
     assert: 'contains(`["scrypt", "pbkdf2_sha256", "sha512_crypt", "bcrypt"]`, password_algorithm)'
+    partial: counterexample_sufficient
     severity: high
     fix: fix_user_secret
     fixtures:
@@ -109,6 +110,7 @@ rules:
     applies_to: {os_family: '*'}
     requires: ['logging.servers[]']
     assert: 'length(logging.servers) > `0`'
+    partial: lower_bound
     severity: medium
     fix: fix_logging_host
     fixtures:
@@ -146,6 +148,7 @@ rules:
     for_each: 'interfaces[]'
     requires: ['interfaces[].proxy_arp', 'interfaces[].shutdown']
     assert: 'shutdown == `true` || proxy_arp == `false`'
+    partial: counterexample_sufficient
     severity: medium
     fix: fix_no_proxy_arp
     fixtures:
@@ -159,6 +162,7 @@ rules:
     for_each: 'mgmt.vty_lines[]'
     requires: ['mgmt.vty_lines[].transport_input']
     assert: 'transport_input == `["ssh"]`'
+    partial: counterexample_sufficient
     severity: high
     fix: fix_vty_ssh_only
     fixtures:
@@ -172,6 +176,7 @@ rules:
     for_each: 'mgmt.vty_lines[]'
     requires: ['mgmt.vty_lines[].access_class']
     assert: 'access_class != `null`'
+    partial: counterexample_sufficient
     severity: high
     fix: fix_vty_access_class
     fixtures:
