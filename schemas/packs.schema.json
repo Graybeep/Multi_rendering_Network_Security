@@ -154,7 +154,7 @@
         "commands": {"type": "array", "items": {"type": "string"}, "description": "A `{items}` line expands to item_commands once per failing item."},
         "item_commands": {"type": "array", "items": {"type": "string"}},
         "rollback": {"type": "array", "items": {"type": "string"}},
-        "item_rollback": {"type": "array", "items": {"type": "string"}},
+        "item_rollback": {"type": "array", "items": {"type": "string"}}, "item_commands_for": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}, "description": "Item name → commands used instead of item_commands for that item, e.g. Junos root, whose password lives at a different path from other users."},
         "reload_required": {"type": "boolean"},
         "operator_input": {"type": "array", "items": {"type": "string", "pattern": "^<[A-Z_]+>$"},
                            "description": "Placeholders the operator must replace before pasting, e.g. <NEW_SECRET>."},

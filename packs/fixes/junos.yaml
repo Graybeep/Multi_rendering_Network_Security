@@ -1,0 +1,111 @@
+# Remediation CLI for Junos, in `set` form, pasted in configuration mode.
+# A `{items}` line expands to item_commands once per failing item; `{name}` comes from that item.
+# `<UPPER_CASE>` placeholders are operator input and must be replaced before pasting.
+#
+# Every fix ends with `commit confirmed 5`: if the change cuts off the operator's access, Junos rolls it
+# back by itself after five minutes. Run `commit` once access is confirmed to make it permanent.
+# Rollback is `rollback 1`, which restores the previous commit exactly (including values, such as the
+# web-management interface, that a hand-written inverse could not know).
+#
+# Only rules that junos.yaml can make FAIL have a fix here. Rules that are NOT_DETERMINED on Junos by
+# design (vty lines, SSH login timeout, syslog level) or settled by a platform constant (CDP) have none.
+id: junos_fixes
+version: 1.0.0
+vendor_pack: junos
+fixes:
+  - id: fix_ssh_v2
+    os_version: '>=12.1'
+    commands: [configure, delete system services ssh protocol-version, set system services ssh protocol-version v2,
+               commit confirmed 5]
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    note: Clients that only speak SSH v1 will be refused. Run `commit` within five minutes to keep the change.
+
+  - id: fix_ssh_retries
+    os_version: '>=12.1'
+    commands: [configure, set system login retry-options tries-before-disconnect 3, commit confirmed 5]
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    note: Applies to every login method, not only SSH. Run `commit` within five minutes to keep the change.
+
+  - id: fix_no_http
+    os_version: '>=12.1'
+    commands: [configure, delete system services web-management http, commit confirmed 5]
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    note: >-
+      Use `set system services web-management https system-generated-certificate` if web management is
+      still needed. Run `commit` within five minutes to keep the change.
+
+  - id: fix_aaa_new_model
+    os_version: '>=12.1'
+    commands:
+      - configure
+      - set system tacplus-server <TACACS_SERVER> secret "<SHARED_SECRET>"
+      - delete system authentication-order
+      - set system authentication-order tacplus
+      - set system authentication-order password
+      - commit confirmed 5
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    operator_input: [<TACACS_SERVER>, <SHARED_SECRET>]
+    note: >-
+      Local passwords stay as the fallback so the device is reachable if the TACACS+ server is not.
+      Confirm a TACACS+ login works, then run `commit` within five minutes, or the change rolls back.
+
+  # Junos keeps root's password at system root-authentication, not under system login user.
+  - id: fix_user_secret
+    os_version: '>=12.1'
+    commands: [configure, '{items}', commit confirmed 5]
+    item_commands: ['set system login user {name} authentication encrypted-password "<NEW_PASSWORD_HASH>"']
+    item_commands_for:
+      root: ['set system root-authentication encrypted-password "<NEW_PASSWORD_HASH>"']
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    operator_input: [<NEW_PASSWORD_HASH>]
+    note: >-
+      Each account needs its own new password; generate each SHA-512 hash with `openssl passwd -6`, or
+      type `set system login user <name> authentication plain-text-password` to be prompted instead.
+      The old hash cannot be converted. Run `commit` within five minutes to keep the change.
+
+  - id: fix_login_banner
+    os_version: '>=12.1'
+    commands: [configure, set system login message "<BANNER_TEXT>", commit confirmed 5]
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    operator_input: [<BANNER_TEXT>]
+    note: Run `commit` within five minutes to keep the change.
+
+  - id: fix_logging_host
+    os_version: '>=12.1'
+    commands: [configure, set system syslog host <SYSLOG_SERVER> any info, commit confirmed 5]
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    operator_input: [<SYSLOG_SERVER>]
+    note: Run `commit` within five minutes to keep the change.
+
+  - id: fix_ntp_authenticate
+    os_version: '>=12.1'
+    commands:
+      - configure
+      - set system ntp authentication-key <KEY_ID> type md5 value "<NTP_KEY>"
+      - set system ntp trusted-key <KEY_ID>
+      - commit confirmed 5
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    operator_input: [<KEY_ID>, <NTP_KEY>]
+    note: >-
+      Servers must hold the same key, and each needs `set system ntp server <ip> key <KEY_ID>`. Newer
+      releases also accept `type sha256`. Run `commit` within five minutes to keep the change.
+
+  # interfaces[] is keyed by physical interface; the evidence lines show which unit has proxy-arp.
+  - id: fix_no_proxy_arp
+    os_version: '>=12.1'
+    commands: [configure, '{items}', commit confirmed 5]
+    item_commands: ['delete interfaces {name} unit <UNIT> proxy-arp']
+    rollback: [configure, rollback 1, commit]
+    reload_required: false
+    operator_input: [<UNIT>]
+    note: >-
+      Repeat the line for every unit the finding's evidence shows with proxy-arp. Run `commit` within
+      five minutes to keep the change.

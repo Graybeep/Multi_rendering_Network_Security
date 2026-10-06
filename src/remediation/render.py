@@ -50,12 +50,14 @@ def _fill(line: str, values: dict[str, Any]) -> str:
     return _VAR.sub(sub, line)
 
 
-def _expand(lines: list[str], item_lines: list[str], items: list[dict[str, Any]]) -> list[str]:
+def _expand(lines: list[str], item_lines: list[str], items: list[dict[str, Any]],
+            overrides: dict[str, list[str]] | None = None) -> list[str]:
     out: list[str] = []
     for line in lines:
         if line == ITEMS:
             for item in items:
-                out.extend(_fill(il, item) for il in item_lines)
+                own = (overrides or {}).get(str(item.get("name")), item_lines)
+                out.extend(_fill(il, item) for il in own)
         else:
             out.append(line)
     return out
@@ -67,7 +69,7 @@ def render(fix: dict[str, Any], failing_items: list[dict[str, Any]], os_version:
         return None
     items = [project(item) for item in failing_items]
     try:
-        commands = _expand(fix["commands"], fix.get("item_commands", []), items)
+        commands = _expand(fix["commands"], fix.get("item_commands", []), items, fix.get("item_commands_for"))
         rollback = _expand(fix["rollback"], fix.get("item_rollback", []), items)
     except KeyError:
         return None

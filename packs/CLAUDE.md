@@ -218,6 +218,10 @@ fixes:
 
 A fix whose `os_version` range excludes the device is withheld, not rendered.
 
+`item_commands_for: {<item name>: [...]}` replaces `item_commands` for one item, for
+when a vendor keeps that item somewhere else. Junos `root`, for example, lives at
+`system root-authentication`, not under `system login user`.
+
 Rendered commands must be idempotent — safe to paste twice — and must flag
 anything needing a reload. Per-interface failures render a fix naming that
 specific interface, pulled from the canonical model.
