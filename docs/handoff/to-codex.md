@@ -69,3 +69,22 @@ New: a device can carry the warning "configuration is inherited from elsewhere i
 warnings next to the verdict counts. **No change to `docs/openapi.yaml`.**
 **Unblocked for you:** real two-vendor output for the results screen:
 `python -m src.cli.main fixtures/configs/batfish_srx_testbed --framework cis --out ./reports`.
+
+---
+
+## 2026-10-06 · Real API server, Junos fixes, review corrections
+
+**Landed:** `make api` / `python -m src.api` serves the contract on 127.0.0.1:8000. CORS allows the Vite dev and preview
+origins (127.0.0.1 and localhost, ports 5173 and 4173). Set `VITE_API_BASE_URL=http://127.0.0.1:8000` to leave the mock.
+Junos FAILs now carry remediation; every fix ends in `commit confirmed 5`.
+**Contract changes in `docs/openapi.yaml` (additive):**
+- `POST /api/scans` accepts an optional `os_version` form field.
+- `EvidenceLine.source`: `platform_constant` | `operator` | null. Show it for defaulted evidence, e.g. "platform fact",
+  "supplied by operator".
+- `missing_fields` may contain a list path ending in `[]` that was read only in part.
+- `501 NotImplemented` (Error body) on clusters, suggestions and confirm until the learning loop lands. Render it as
+  "not available yet", never as an empty queue.
+- `409` on `reevaluate` while the scan is still running.
+**Not landed:** the learning loop (clusters, suggestions, confirm), so the training screen stays on the mock.
+**Unblocked for you:** upload, progress, findings, PDF and packs screens against the real backend; the 2.2 gate
+(drop `junos.yaml` in, re-evaluate, no restart) works through `POST /api/scans/{id}/reevaluate`.
