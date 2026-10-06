@@ -49,6 +49,11 @@ paths:
                   type: array
                   minItems: 1
                   items: {$ref: '#/components/schemas/Framework'}
+                os_version:
+                  type: string
+                  description: >
+                    Optional. OS version to assume for devices whose config states none, e.g. 15.1R7.
+                    A version stated in the config always wins. Recorded in evidence with source `operator`.
             encoding:
               files: {contentType: application/octet-stream}
       responses:
@@ -138,6 +143,7 @@ paths:
                     description: Sorted by `device_count` descending.
                     items: {$ref: '#/components/schemas/Cluster'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
 
   /api/clusters/{cluster_id}/suggestions:
     get:
@@ -155,6 +161,7 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Suggestions'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
 
   /api/clusters/{cluster_id}/confirm:
     post:
@@ -184,6 +191,7 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/ConfirmResult'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '501': {$ref: '#/components/responses/NotImplemented'}
         '409':
           description: Mapping would overlap an existing mapping ambiguously; nothing written
           content:
@@ -204,6 +212,11 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/ScanCreated'}
         '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: The scan is still queued or running
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
 
   /api/schema/fields:
     get:
@@ -273,6 +286,11 @@ components:
           schema: {$ref: '#/components/schemas/Error'}
     TooLarge:
       description: Upload exceeds the size limit
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    NotImplemented:
+      description: The learning loop (PLAN 2.3-2.6) is not built yet. Never returns placeholder data.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}

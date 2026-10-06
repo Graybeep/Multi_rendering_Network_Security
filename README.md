@@ -10,8 +10,9 @@ new pack file, not a code change or a redeploy.
 
 SIH 2026 · problem statement 26155 · team Wi-fight.
 
-> Status: early build. Cisco IOS with the CIS pack works end to end from the CLI. The
-> HTTP API (`make api`) and the Junos, FortiOS and NX-OS packs are not built yet.
+> Status: early build. Cisco IOS and Junos (`set` form) audit end to end against the CIS
+> pack, from the CLI or the local HTTP API. The learning loop (unrecognised-line
+> clusters, suggestions) and the FortiOS and NX-OS packs are not built yet.
 
 ## Requirements
 
@@ -54,6 +55,7 @@ Options: `--framework` (repeatable), `--packs <dir>`, `--workers <n>`,
 |---|---|---|
 | Tests | `make test` | `python -m pytest` |
 | Lint and types | `make lint` | `python -m ruff check src tests` then `python -m mypy src` |
+| API server (127.0.0.1:8000) | `make api` | `python -m src.api` |
 | API mock for the frontend | `make mock` | `npx -y @stoplight/prism-cli@5 mock docs/openapi.yaml -h 127.0.0.1 -p 8001` |
 | Frontend | | `cd web && npm install && npm run dev` |
 
