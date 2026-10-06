@@ -59,14 +59,33 @@ This is where the architecture stops being theoretical.
 
 | # | Task | Owner | Done when |
 |---|---|---|---|
-| 2.1 | `brace_tree` reader (Junos) | CC | Junos fixture produces a tree |
-| 2.2 | `junos.yaml` pack mapping to the **same** canonical fields | H + CC | The 15 CIS rules run unchanged on Junos |
+| 2.1 | `set_commands` reader (Junos flat `set` syntax: each line is path + value) | CC | `as1border1/2` and the 3 SRX fixtures produce trees; `apply-groups` decision recorded (see hazards) |
+| 2.2 | `junos.yaml` pack mapping to the **same** canonical fields as `cisco_ios.yaml` | H + CC | The 15 CIS rules run unchanged on Junos |
 | 2.3 | Template signature normaliser (strip IPs, hostnames, interface names, integers) | CC | `idle-timeout 600` and `900` collapse to one signature |
 | 2.4 | Clustering across a batch, sorted by device count | CC | 20 files → a short question list |
 | 2.5 | Lexical ranking against canonical field descriptions (TF-IDF + token overlap) | CC | Correct field in top 3 on fixture cases |
 | 2.6 | Confirm endpoint → write `packs/learned/<vendor>.yaml` → registry reload → cache invalidate | CC | Second run matches exactly, no restart |
 | 2.7 | Training screen: cluster queue with device counts, ranked suggestions, confirm | CX | Human must click; no auto-apply |
 | 2.8 | Fan-out job model, process pool, per-device isolation, parse cache | CC | One corrupt file does not kill the batch |
+
+**Reader order (decided 2026-10-06):** `set_commands` first, `brace_tree` in Phase 3.
+Every whole Junos device config we have is in `set` form; the only hierarchical Junos
+available is Batfish parser snippets. `brace_tree` needs no new pack work (2.2 covers
+both encodings), and building both now would take a day out of Phase 3, which holds the
+non-negotiable 3.9. Hierarchical is what `show configuration` emits by default, so
+RANCID and Oxidized archives are mostly hierarchical: `brace_tree` is required
+long-term, just not first.
+
+**Hazard — Junos configuration groups.** `set groups ...` plus `apply-groups` means a
+value defined in one place is inherited elsewhere. Decide in 2.1 whether v1 resolves
+`apply-groups`. If it does not, affected fields resolve `state=unknown`, never
+`defaulted`. A silent wrong value here is a false PASS.
+
+**Hazard — SRX is a different platform from the border routers.** Zones, security
+policies and NAT exist on SRX only. The 15 system-level rules (ssh, telnet, ntp, syslog,
+snmp) live under `system` and are unaffected. `junos.yaml` must not accumulate SRX-only
+mappings without a platform scope; that rebuilds the per-vendor coupling the project
+exists to avoid.
 
 **Gate (end of Day 12):** drop `junos.yaml` into the packs folder with the server
 running and a Junos config goes from mostly-NOT_DETERMINED to audited. That is the
@@ -80,7 +99,8 @@ Cut from here first if you are behind.
 
 | # | Task | Owner | Priority |
 |---|---|---|---|
-| 3.1 | `set_commands` reader + `fortios.yaml` (third vendor) | CC | High |
+| 3.1 | `brace_tree` reader (Junos hierarchical). Acceptance: produces an **identical** tree to `set_commands` for a config available in both forms. Flat and hierarchical are two encodings of one configuration; divergence is a bug in one reader | CC | High |
+| 3.1b | FortiOS reader + `fortios.yaml` (third vendor). FortiOS is block-nested by `config`/`end` and `edit`/`next`, not path-per-line, so `set_commands` does not cover it | CC | High |
 | 3.2 | NIST and STIG rule packs, 5 rules each, so the framework selector is real | H + CC | High |
 | 3.3 | Fleet statistics: compliance rate by severity and control, Pareto ranking, coverage % | CC | High — this is the statistical-analysis slide |
 | 3.4 | Results dashboard with fleet rollup | CX | High |

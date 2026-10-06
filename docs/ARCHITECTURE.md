@@ -23,9 +23,13 @@ becomes a YAML data file loaded at runtime.
 |---|---|---|
 | `indent_blocks` | indentation defines nesting | Cisco IOS / NX-OS, Arista EOS, Huawei |
 | `brace_tree` | `{ }` nesting | Junos hierarchical form |
-| `set_commands` | path + value per line | Junos `set`, PAN-OS CLI, FortiOS |
+| `set_commands` | path + value per line | Junos `set`, PAN-OS CLI |
 | `structured` | already a tree | PAN-OS XML, SONiC `config_db.json`, cloud SGs |
 | `key_value` | flat INI | misc |
+
+FortiOS is **not** `set_commands`, despite its `set` lines. It nests blocks with
+`config` … `end` and `edit` … `next` delimiters, so it needs a reader of its own (PLAN
+3.1b). The `set` reader does not give FortiOS for free.
 
 ---
 
