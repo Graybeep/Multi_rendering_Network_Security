@@ -58,8 +58,7 @@ def test_real_srx_verdicts(snapshot: Snapshot, catalogue: Catalogue) -> None:
     verdicts = _verdicts(snapshot, catalogue, (SRX / "junos-srx-1.cfg").read_text())
     assert verdicts == {
         "cis.http.disabled": "FAIL",                # web-management http on fxp0.0, line 17
-        "cis.enable_secret.strong_hash": "FAIL",    # root password is $1$ (md5-crypt)
-        "cis.local_users.strong_hash": "FAIL",      # all three users are $1$
+        "cis.local_users.strong_hash": "FAIL",      # root and all three users are $1$ (md5-crypt)
         "cis.logging.remote_host": "FAIL",          # syslog writes local files only
         "cis.aaa.enabled": "FAIL",                  # no authentication-order: local passwords only
         "cis.ntp.authenticate": "FAIL",             # no NTP trusted key
@@ -73,7 +72,17 @@ def test_real_srx_verdicts(snapshot: Snapshot, catalogue: Catalogue) -> None:
         "cis.vty.ssh_only": "NOT_DETERMINED",
         "cis.vty.access_class": "NOT_DETERMINED",
         "cis.cdp.disabled": "NOT_DETERMINED",
+        "cis.enable_secret.strong_hash": "NOT_DETERMINED",  # Junos has no enable mode
     }
+
+
+def test_root_is_a_local_user_not_an_enable_secret(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    model, _ = _model(snapshot, catalogue, (SRX / "junos-srx-1.cfg").read_text())
+    users = {u["name"]["value"]: u for u in model["auth"]["local_users"]["items"]}
+    assert sorted(users) == ["admin", "padhye", "ratul", "root"]
+    assert users["root"]["name"]["evidence"]["line"] == 3
+    assert users["root"]["password_algorithm"]["value"] == "md5"
+    assert model["auth"]["enable_secret"]["algorithm"]["state"] == "unknown"
 
 
 def test_finding_cites_the_junos_line(snapshot: Snapshot, catalogue: Catalogue) -> None:

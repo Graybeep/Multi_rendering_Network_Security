@@ -12,7 +12,7 @@
 # REVIEW(H): every `absent: default` below states Junos behaviour from 12.1 onwards and needs a human
 # sign-off. Where the default was not certain the field is `absent: unknown` and says why.
 id: junos
-version: 1.0.0
+version: 1.1.0
 vendor: juniper
 os_family: junos
 reader: set_commands
@@ -118,17 +118,6 @@ mappings:
     fixture: set system authentication-order password
     expect: false
 
-  # REVIEW(H): Junos has no enable mode. The root account password is the closest analogue of the
-  # privileged-mode administrator password this field describes. Junos refuses to commit without it,
-  # so its absence means we did not see the whole file, hence `unknown`.
-  - id: junos.root_password
-    canonical: auth.enable_secret.algorithm
-    match: '^system root-authentication encrypted-password (\$\d\$)\S*$'
-    map: {'$1$': md5, '$5$': sha256_crypt, '$6$': sha512_crypt}
-    absent: unknown
-    fixture: set system root-authentication encrypted-password "$6$abc$def"
-    expect: sha512_crypt
-
   - id: junos.password_min_length
     canonical: auth.password_min_length
     match: '^system login password minimum-length (\d+)$'
@@ -152,6 +141,16 @@ mappings:
     match: '^system login user (?P<name>\S+) class \S+$'
     empty: mapped
     fixture: set system login user admin class super-user
+
+  # Junos has no enable mode, so auth.enable_secret.* stays unknown here: there is no equivalent.
+  # root is a local account with its own statement path; `name` is read from that path, not assumed.
+  - id: junos.local_users.root
+    canonical: auth.local_users[]
+    match: '^system (?P<name>root)-authentication encrypted-password (?P<password_algorithm>\$\d\$)\S*$'
+    map:
+      password_algorithm: {'$1$': md5, '$5$': sha256_crypt, '$6$': sha512_crypt}
+    empty: mapped
+    fixture: set system root-authentication encrypted-password "$6$abc$def"
 
   - id: junos.local_users.password
     canonical: auth.local_users[]
