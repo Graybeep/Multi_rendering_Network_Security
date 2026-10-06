@@ -45,6 +45,13 @@ def test_set_form_snmp_community_is_masked() -> None:
         "set snmp community public authorization read-only")
 
 
+def test_password_policy_options_are_not_secrets() -> None:
+    for line in ("set system login password minimum-length 12", "set system login password change-type character-sets",
+                 "set system login password format sha512", "set system login password maximum-length 64",
+                 "set system authentication-order password"):
+        assert redact_line(line) == line
+
+
 def test_key_ids_are_not_secrets() -> None:
     # Real line from fixtures/configs/batfish_nxos_testconfigs/nxos_ntp:7 — `key 12345` names a key, it is not one.
     line = "ntp server 10.1.2.3 use-vrf management key 12345 minpoll 10 maxpoll 10"

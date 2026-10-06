@@ -25,7 +25,9 @@ _RULES: tuple[re.Pattern[str], ...] = (
     # enable secret 9 X · username u secret 5 X · password 7 X · key-string 7 X · encrypted-password "X"
     # Junos pre-shared-key ascii-text "X" · authentication-key "X" · FortiOS set passwd ENC X
     re.compile(
-        r"(?P<head>(?<!\S)(?:secret|password|passwd|psksecret|api-key|key-string|pre-shared-key|"
+        # `password minimum-length 12` is policy, not a secret.
+        r"(?P<head>(?<!\S)(?:secret|password(?!\s+(?:minimum-|maximum-|change-type\s|format\s))|"
+        r"passwd|psksecret|api-key|key-string|pre-shared-key|"
         r"encrypted-password|authentication-key\s+\d+\s+md5|authentication-key\s+\d+\s+type\s+\S+\s+value|"
         r"authentication-key)(?:\s+[0-9])?\s+" + _FORM + ")" + _VALUE
     ),
