@@ -28,6 +28,17 @@ def _verdicts(snapshot: Snapshot, catalogue: Catalogue, text: str) -> dict[str, 
     return {f["rule_id"]: f["verdict"] for f in out["findings"]}
 
 
+def _pack_defaults(node: Any) -> list[str]:
+    """Mapping ids of values defaulted for an absent line (not platform constants or operator input)."""
+    if isinstance(node, dict):
+        ev = node.get("evidence")
+        own = [ev["mapping_id"]] if node.get("state") == "defaulted" and ev and "source" not in ev else []
+        return own + [m for k, v in node.items() if k != "evidence" for m in _pack_defaults(v)]
+    if isinstance(node, list):
+        return [m for v in node for m in _pack_defaults(v)]
+    return []
+
+
 def _states(node: Any) -> list[str]:
     if isinstance(node, dict):
         own = [node["state"]] if "state" in node else []
@@ -65,13 +76,13 @@ def test_real_srx_verdicts(snapshot: Snapshot, catalogue: Catalogue) -> None:
         "cis.login_banner": "FAIL",                 # no system login message
         "cis.ssh.version_2": "PASS",                # ssh on, no protocol-version line: v2 only on 15.1
         "cis.interfaces.no_proxy_arp": "PASS",      # no unit enables proxy-arp
+        "cis.cdp.disabled": "PASS",                 # platform constant: Junos has no CDP
         # Not expressible from this config, or not a Junos concept: never guessed.
         "cis.ssh.timeout": "NOT_DETERMINED",
         "cis.ssh.auth_retries": "NOT_DETERMINED",
         "cis.logging.trap_level": "NOT_DETERMINED",
         "cis.vty.ssh_only": "NOT_DETERMINED",
         "cis.vty.access_class": "NOT_DETERMINED",
-        "cis.cdp.disabled": "NOT_DETERMINED",
         "cis.enable_secret.strong_hash": "NOT_DETERMINED",  # Junos has no enable mode
     }
 
@@ -95,7 +106,7 @@ def test_finding_cites_the_junos_line(snapshot: Snapshot, catalogue: Catalogue) 
 def test_no_os_version_means_no_defaults(snapshot: Snapshot, catalogue: Catalogue) -> None:
     # as1border1 carries no `set version` line, so no version-scoped default may be claimed.
     model, _ = _model(snapshot, catalogue, (JUNOS / "as1border1.cfg").read_text())
-    assert "defaulted" not in _states(model)
+    assert _pack_defaults(model) == []
     assert model["device"]["hostname"]["value"] == "as1border1"
 
 
@@ -124,7 +135,7 @@ def test_one_syslog_host_on_several_lines_is_one_server(snapshot: Snapshot, cata
 def test_applied_group_makes_unstated_settings_not_determined(snapshot: Snapshot, catalogue: Catalogue) -> None:
     text = (SRX / "junos-srx-1.cfg").read_text() + "set system apply-groups site-defaults\n"
     model, warnings = _model(snapshot, catalogue, text)
-    assert "defaulted" not in _states(model)
+    assert _pack_defaults(model) == []
     assert model["services"]["http"]["enabled"]["state"] == "mapped"  # stated directly, so still known
     assert any("not resolved" in w for w in warnings)
     # Visible users are real; a group could add more, so the list is read but incomplete.
@@ -146,3 +157,71 @@ def test_excluded_or_inactive_group_does_not_block_defaults(
         snapshot: Snapshot, catalogue: Catalogue, extra: str) -> None:
     model, _ = _model(snapshot, catalogue, (SRX / "junos-srx-1.cfg").read_text() + extra)
     assert model["auth"]["login_banner"]["present"]["state"] == "defaulted"
+
+
+def test_cdp_is_a_platform_constant_with_its_source(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    out = audit_device((JUNOS / "as1border1.cfg").read_text(), "r", "r", snapshot, catalogue, ["cis"])
+    cdp = next(f for f in out["findings"] if f["rule_id"] == "cis.cdp.disabled")
+    assert cdp["verdict"] == "PASS"  # holds even with no OS version: it is not a version-scoped default
+    assert [(e["state"], e["line_no"], e["source"]) for e in cdp["evidence"]] == [
+        ("defaulted", None, "platform_constant")]
+
+
+def _pack_with(tmp: Any, extra: str) -> Any:
+    body = (ROOT / "packs" / "vendors" / "junos.yaml").read_text(encoding="utf-8")
+    path = tmp / "junos.yaml"
+    path.write_text(body + extra, encoding="utf-8")
+    return path
+
+
+_CDP_MAPPING = """  - id: junos.cdp
+    canonical: discovery.cdp_enabled
+    match: '^protocols cdp$'
+    value: true
+    absent: unknown
+    fixture: set protocols cdp
+"""
+
+
+def test_constant_cannot_also_be_mapped(tmp_path: Any, catalogue: Catalogue) -> None:
+    from src.mapping.pack import load_vendor_pack
+    from src.packs import PackError
+    with pytest.raises(PackError, match="platform constant"):
+        load_vendor_pack(_pack_with(tmp_path, _CDP_MAPPING), catalogue)
+
+
+@pytest.mark.parametrize("constants, message", [
+    ("  interfaces.proxy_arp: false\n", "not a canonical scalar field"),
+    ("  discovery.cdp_enabled: nope\n", "constants/discovery.cdp_enabled"),
+])
+def test_bad_constant_is_rejected(tmp_path: Any, catalogue: Catalogue, constants: str, message: str) -> None:
+    from src.mapping.pack import load_vendor_pack
+    from src.packs import PackError
+    body = (ROOT / "packs" / "vendors" / "junos.yaml").read_text(encoding="utf-8")
+    body = body.replace("constants:\n  discovery.cdp_enabled: false\n", "constants:\n" + constants)
+    (tmp_path / "junos.yaml").write_text(body, encoding="utf-8")
+    with pytest.raises(PackError, match=message):
+        load_vendor_pack(tmp_path / "junos.yaml", catalogue)
+
+
+def test_operator_version_unlocks_defaults_and_is_labelled(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    text = (JUNOS / "as1border1.cfg").read_text()
+    without = _verdicts(snapshot, catalogue, text)
+    out = audit_device(text, "r", "r", snapshot, catalogue, ["cis"], os_version="15.1R7")
+    with_version = {f["rule_id"]: f["verdict"] for f in out["findings"]}
+    assert out["canonical"]["device"]["os_version"] == {"value": "15.1R7", "state": "defaulted", "evidence": {
+        "line": None, "mapping_id": "operator.os_version", "pack_version": "junos@1.2.0", "source": "operator"}}
+    assert without["cis.login_banner"] == "NOT_DETERMINED"
+    assert with_version["cis.login_banner"] == "FAIL"  # no `system login message`; default now applies
+
+
+def test_config_stated_version_beats_operator_version(snapshot: Snapshot, catalogue: Catalogue) -> None:
+    out = audit_device((SRX / "junos-srx-1.cfg").read_text(), "s", "s", snapshot, catalogue, ["cis"],
+                       os_version="12.1")
+    assert out["canonical"]["device"]["os_version"]["value"] == "15.1X49-D15.4"
+    assert any("operator-supplied 12.1 was not used" in w for w in out["warnings"])
+
+
+def test_cli_rejects_an_unparseable_operator_version(tmp_path: Any) -> None:
+    from src.cli.main import main
+    assert main([str(JUNOS / "as1border1.cfg"), "--out", str(tmp_path), "--os-version", "latest"]) == 2

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import jsonschema
 import regex
 
 from src.mapping.canonical import Catalogue, FieldSpec, normalise, parse_path
@@ -71,6 +72,7 @@ class VendorPack:
     mappings: list[Mapping]
     learned_version: str | None = None
     inheritance: list[SafePattern] = field(default_factory=list)
+    constants: dict[str, Any] = field(default_factory=dict)  # normalised canonical path -> value
     dispatch: dict[str, list[Mapping]] = field(default_factory=dict)
     wildcard: list[Mapping] = field(default_factory=list)
 
@@ -154,6 +156,31 @@ def _check_absent_consistency(mappings: list[Mapping], where: str) -> None:
                             f"for {m.target} ({prev} vs {key})")
 
 
+def _check_constants_unmapped(constants: dict[str, Any], mappings: list[Mapping], where: str) -> None:
+    for m in mappings:
+        if m.target in constants:
+            raise PackError(f"{where}: mapping {m.id}: field canonical: {m.target!r} is a platform constant "
+                            "and cannot also be read from config")
+
+
+def _load_constants(raw: dict[str, Any], mappings: list[Mapping], catalogue: Catalogue,
+                    where: str) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for path, value in raw.items():
+        target = normalise(path)
+        spec = catalogue.fields.get(target)
+        if spec is None or "[]" in target:
+            raise PackError(f"{where}: field constants/{path}: not a canonical scalar field")
+        if spec.value_schema:
+            try:
+                jsonschema.validate(value, spec.value_schema)
+            except jsonschema.ValidationError as exc:
+                raise PackError(f"{where}: field constants/{path}: {exc.message}") from exc
+        out[target] = value
+    _check_constants_unmapped(out, mappings, where)
+    return out
+
+
 def load_vendor_pack(path: Path, catalogue: Catalogue) -> VendorPack:
     doc = read_yaml(path)
     validate_pack(doc, "vendor_pack", path.name)
@@ -179,8 +206,10 @@ def load_vendor_pack(path: Path, catalogue: Catalogue) -> VendorPack:
 
     inheritance = [_compile(src, path.name, f"unresolved_inheritance/{i}")
                    for i, src in enumerate(doc.get("unresolved_inheritance") or [])]
+    constants = _load_constants(doc.get("constants") or {}, mappings, catalogue, path.name)
     pack = VendorPack(doc["id"], doc["version"], doc["vendor"], doc["os_family"], doc["reader"],
-                      detect, int(doc.get("min_score", 1)), facts, mappings, inheritance=inheritance)
+                      detect, int(doc.get("min_score", 1)), facts, mappings, inheritance=inheritance,
+                      constants=constants)
     pack.index()
     return pack
 
@@ -201,7 +230,8 @@ def merge_learned(pack: VendorPack, path: Path, catalogue: Catalogue) -> VendorP
         learned.append(build_mapping(raw, catalogue, tag, path.name, LEARNED_PRIORITY))
     merged = VendorPack(pack.id, pack.version, pack.vendor, pack.os_family, pack.reader, pack.detect,
                         pack.min_score, pack.facts, pack.mappings + learned, doc["version"],
-                        inheritance=pack.inheritance)
+                        inheritance=pack.inheritance, constants=pack.constants)
     _check_absent_consistency(merged.mappings, path.name)
+    _check_constants_unmapped(merged.constants, learned, path.name)
     merged.index()
     return merged

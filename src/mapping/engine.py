@@ -280,8 +280,15 @@ def _all_collections(node: Any) -> list[dict[str, Any]]:
     return found
 
 
+def _sourced(value: Any, mapping_id: str, pack_version: str, source: str) -> Triple:
+    """A value no config line backs, labelled with where it did come from."""
+    return {"value": value, "state": "defaulted",
+            "evidence": {**_evidence(None, mapping_id, pack_version), "source": source}}
+
+
 def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue: Catalogue,
-               detect_line: int | None) -> MapResult:
+               detect_line: int | None, operator_os_version: str | None = None) -> MapResult:
+    """`operator_os_version` is used only when the config states none. The engine never infers a version."""
     model = catalogue.empty_model()
     result = MapResult(model, [])
     writer = _Writer(model, catalogue)
@@ -304,6 +311,14 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
                 device[name] = _mapped(hit.group(group), i + 1, f"{pack.id}.fact.{name}", pack.tag)
                 consumed.add(i + 1)
                 break
+    if operator_os_version is not None:
+        stated = device["os_version"]
+        if stated["state"] == "unknown":
+            device["os_version"] = _sourced(operator_os_version, "operator.os_version", pack.tag, "operator")
+        elif stated["value"] != operator_os_version:
+            result.warnings.append(
+                f"line {stated['evidence']['line']}: config states OS version {stated['value']}; "
+                f"operator-supplied {operator_os_version} was not used")
 
     def visit(node: Node, parent: Node | None) -> None:
         candidates = pack.dispatch.get(node.text.split(maxsplit=1)[0], []) + pack.wildcard
@@ -363,5 +378,10 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
         for holder in _all_collections(model):
             if holder["items"]:
                 holder["complete"] = False
+    # Platform facts hold whatever the config says or inherits; the loader guarantees no mapping targets them.
+    for path, value in pack.constants.items():
+        name = parse_path(path)[-1].name
+        for holder in _containers(model, path):
+            holder[name] = _sourced(value, f"{pack.id}.constant.{path}", pack.tag, "platform_constant")
     catalogue.validate(model)
     return result

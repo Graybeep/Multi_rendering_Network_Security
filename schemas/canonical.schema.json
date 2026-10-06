@@ -1435,7 +1435,7 @@
         "defaulted",
         "unknown"
       ],
-      "description": "mapped: read from a config line. defaulted: line absent, value is the pack's declared default. unknown: we cannot say; rules requiring this field return NOT_DETERMINED."
+      "description": "mapped: read from a config line. defaulted: no config line backs the value; it is the pack's declared default for an absent line, a platform constant, or operator-supplied (see evidence.source). unknown: we cannot say; rules requiring this field return NOT_DETERMINED."
     },
     "evidence": {
       "type": "object",
@@ -1467,6 +1467,13 @@
           "examples": [
             "cisco_ios@1.4.0"
           ]
+        },
+        "source": {
+          "enum": [
+            "platform_constant",
+            "operator"
+          ],
+          "description": "Where a value with no config line came from. platform_constant: the vendor pack states a fact true of every device of this platform. operator: supplied by the person running the scan. Omitted: read from config, or the pack's declared default for an absent line."
         }
       }
     },

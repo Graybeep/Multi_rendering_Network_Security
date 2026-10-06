@@ -18,6 +18,7 @@ from typing import Any
 from src.audit import audit_device
 from src.registry import Registry
 from src.report.pdf import render_pdf
+from src.versions import release
 
 MAX_BYTES = 5 * 1024 * 1024
 DEFAULT_PACKS = Path(__file__).resolve().parents[2] / "packs"
@@ -25,14 +26,16 @@ DEFAULT_PACKS = Path(__file__).resolve().parents[2] / "packs"
 _registry: Registry | None = None  # per worker process
 
 
-def _worker(path: str, device_id: str, packs: str, frameworks: list[str]) -> dict[str, Any]:
+def _worker(path: str, device_id: str, packs: str, frameworks: list[str],
+            os_version: str | None) -> dict[str, Any]:
     global _registry
     if _registry is None or _registry.root != Path(packs):
         _registry = Registry(Path(packs))
     p = Path(path)
     try:
         text = p.read_bytes().decode("utf-8", errors="replace")
-        return audit_device(text, p.name, device_id, _registry.snapshot(), _registry.catalogue, frameworks)
+        return audit_device(text, p.name, device_id, _registry.snapshot(), _registry.catalogue, frameworks,
+                            os_version)
     except Exception as exc:  # noqa: BLE001 — per-device isolation: one bad file never kills the batch
         return {"device_id": device_id, "filename": p.name, "status": "error",
                 "error": f"{type(exc).__name__}: {exc}"[:300]}
@@ -56,7 +59,8 @@ def _device_ids(paths: list[Path]) -> list[str]:
     return out
 
 
-def run(paths: list[Path], frameworks: list[str], packs: Path, workers: int, timeout: float) -> list[dict[str, Any]]:
+def run(paths: list[Path], frameworks: list[str], packs: Path, workers: int, timeout: float,
+        os_version: str | None = None) -> list[dict[str, Any]]:
     ids = _device_ids(paths)
     results: dict[int, dict[str, Any]] = {}
     pending = list(range(len(paths)))
@@ -69,7 +73,8 @@ def run(paths: list[Path], frameworks: list[str], packs: Path, workers: int, tim
     ctx = mp.get_context("spawn")
     while pending:
         with ctx.Pool(processes=max(1, min(workers, len(pending)))) as pool:
-            jobs = {i: pool.apply_async(_worker, (str(paths[i]), ids[i], str(packs), frameworks)) for i in pending}
+            jobs = {i: pool.apply_async(_worker, (str(paths[i]), ids[i], str(packs), frameworks, os_version))
+                    for i in pending}
             hung = None
             for i in pending:
                 try:
@@ -97,8 +102,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--packs", type=Path, default=DEFAULT_PACKS, help="pack directory")
     ap.add_argument("--workers", type=int, default=max(1, (mp.cpu_count() or 2) - 1))
     ap.add_argument("--timeout", type=float, default=60.0, help="per-device seconds")
+    ap.add_argument("--os-version", help="OS version to assume for devices whose config states none "
+                                         "(recorded as operator-supplied; a version in the config wins)")
     args = ap.parse_args(argv)
     frameworks = args.frameworks or ["cis"]
+    if args.os_version is not None and release(args.os_version) is None:
+        print(f"scan: --os-version {args.os_version!r} does not start with a release number like 15.1",
+              file=sys.stderr)
+        return 2
 
     if not args.target.exists():
         print(f"scan: {args.target} does not exist", file=sys.stderr)
@@ -115,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"scan: no configuration files under {args.target}", file=sys.stderr)
         return 2
     generated = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    results = run(paths, frameworks, args.packs, args.workers, args.timeout)
+    results = run(paths, frameworks, args.packs, args.workers, args.timeout, args.os_version)
 
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"{'device':<24} {'status':<6} {'FAIL':>4} {'PASS':>4} {'N/D':>4} {'coverage':>8}  pack")

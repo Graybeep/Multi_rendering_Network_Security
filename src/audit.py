@@ -41,7 +41,7 @@ def _evidence_lines(pairs: list[tuple[str, dict[str, Any] | None]], lines: list[
     for path, triple in pairs:
         if triple is None:
             out.append({"canonical_field": path, "state": "unknown", "value": None, "line_no": None,
-                        "text": None, "mapping_id": None, "pack_version": None})
+                        "text": None, "mapping_id": None, "pack_version": None, "source": None})
             continue
         ev = triple.get("evidence") or {}
         line_no = ev.get("line")
@@ -53,6 +53,7 @@ def _evidence_lines(pairs: list[tuple[str, dict[str, Any] | None]], lines: list[
             "text": lines[line_no - 1].strip() if line_no else None,
             "mapping_id": ev.get("mapping_id"),
             "pack_version": ev.get("pack_version"),
+            "source": ev.get("source"),
         })
     return out
 
@@ -66,7 +67,8 @@ def _error(device_id: str, filename: str, message: str, sha: str) -> dict[str, A
 
 
 def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catalogue: Catalogue,
-                 frameworks: list[str]) -> dict[str, Any]:
+                 frameworks: list[str], os_version: str | None = None) -> dict[str, Any]:
+    """`os_version` is operator-supplied, used only when the config does not state one."""
     sha = hashlib.sha256(text.encode("utf-8", "surrogateescape")).hexdigest()
     lines = redact(text)
 
@@ -85,7 +87,7 @@ def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catal
             return _error(device_id, filename, f"reader {pack.reader!r} not implemented", sha)
         try:
             nodes = reader(lines)
-            mapped = map_device(pack, nodes, lines, catalogue, detection.line)
+            mapped = map_device(pack, nodes, lines, catalogue, detection.line, os_version)
         except AmbiguousMapping as exc:
             return _error(device_id, filename, f"ambiguous mapping: {exc}", sha)
         model, warnings = mapped.model, mapped.warnings

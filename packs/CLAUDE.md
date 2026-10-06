@@ -132,6 +132,17 @@ the pack does not resolve. Absent fields then stay `unknown` instead of defaulte
 and every collection is marked unread, because a group can add items the local lines
 do not show.
 
+`constants:` (pack level) states facts true of every device on the platform,
+whatever the config says. Example: `discovery.cdp_enabled: false` on Junos, which
+has no CDP. They are emitted as `defaulted` with `evidence.source:
+platform_constant`. They apply with no OS version and under `apply-groups`. A field
+cannot be both a constant and a mapping target; the loader rejects that. Never
+invent a command so that a fact has something to match.
+
+The operator can supply an OS version (`scan --os-version`). It is used only when
+the config states none, and it is recorded with `evidence.source: operator`. The
+engine never infers a version from syntax.
+
 Flat-syntax packs (`reader: set_commands`) see the whole path in each statement, so
 collection keys are named groups in `match`, and `scope` is not used. Fixtures are
 written with the `set` verb, as the device prints them.

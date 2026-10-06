@@ -78,6 +78,10 @@
           }
         },
         "mappings": {"type": "array", "items": {"$ref": "#/$defs/mapping"}},
+        "constants": {
+          "type": "object", "propertyNames": {"pattern": "^[a-z_]+([.][a-z_]+)+$"},
+          "description": "Canonical scalar field → value that holds for every device of this platform regardless of config, e.g. discovery.cdp_enabled: false on a platform without CDP. Emitted as defaulted with evidence.source platform_constant. A field may not be both a constant and a mapping target."
+        },
         "unresolved_inheritance": {
           "type": "array", "items": {"type": "string", "minLength": 1},
           "description": "Regexes searched in every effective statement. A hit means the device inherits configuration from elsewhere in the file that this pack does not resolve, so absent fields stay unknown and no collection is taken as complete."

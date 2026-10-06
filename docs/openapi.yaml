@@ -421,6 +421,13 @@ components:
           description: Redacted source line; null when line_no is null.
         mapping_id: {type: [string, 'null']}
         pack_version: {type: [string, 'null'], description: 'Vendor pack as id@version'}
+        source:
+          type: [string, 'null']
+          enum: [platform_constant, operator, null]
+          description: >
+            For a defaulted value with no config line: `platform_constant` is a fact the vendor pack states
+            for the whole platform (e.g. no CDP on Junos); `operator` was supplied by whoever ran the scan
+            (e.g. the OS version). Null otherwise.
 
     Remediation:
       type: object
