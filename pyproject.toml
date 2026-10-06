@@ -18,7 +18,7 @@ dependencies = [
 scan = "src.cli.main:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.10", "openapi-spec-validator>=0.7", "types-PyYAML", "types-regex", "types-jmespath", "types-reportlab"]
+dev = ["pytest>=8", "ruff>=0.4", "mypy>=1.10", "openapi-spec-validator>=0.7", "types-PyYAML", "types-regex", "types-jmespath", "types-jsonschema", "types-reportlab"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
