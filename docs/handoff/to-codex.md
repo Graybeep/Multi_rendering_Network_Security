@@ -46,3 +46,14 @@ remediation. Do not ship it as placeholder data in the UI.
 **Unblocked for you:** PLAN 1.10 (upload and progress) and 1.11 (findings screen). For 1.11, note the evidence layout
 for per-item rules: rows come in groups, the item's key row (e.g. `interfaces[].name`, "interface Loopback0", line 51)
 followed by its attribute rows.
+
+---
+
+## 2026-10-06 · Phase 0 gaps closed, Phase 2.1 reader
+
+**Landed:** CI (`.github/workflows/ci.yml`, backend only), README, Junos / FortiOS / NX-OS fixtures, a redaction fix for
+Junos and FortiOS secrets, and the `set_commands` reader (PLAN 2.1). Reader order changed: `set_commands` now, `brace_tree`
+in Phase 3. A Junos config with no Junos pack currently audits as 0 FAIL / 15 NOT_DETERMINED — that is demo beat 2.
+**Not landed:** `junos.yaml` (2.2), the FastAPI server. **No change to `docs/openapi.yaml`.**
+**Unblocked for you:** nothing new on the contract. If you want a real beat-2 screen, the fixture
+`fixtures/configs/batfish_example_juniper/as1border1.cfg` produces an all-NOT_DETERMINED device via the CLI.
