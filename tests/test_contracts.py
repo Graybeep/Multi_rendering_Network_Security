@@ -118,7 +118,11 @@ def test_engine_output_conforms_to_the_api_contract() -> None:
     validator = jsonschema.Draft202012Validator(
         {"$ref": "#/components/schemas/DeviceFindings", "components": spec["components"]})
     registry = Registry(ROOT / "packs")
-    cfg = ROOT / "fixtures" / "configs" / "batfish_example_live" / "as2dept1.cfg"
-    for text in (cfg.read_text(), "not a config at all\n"):
-        result = audit_device(text, cfg.name, "d1", registry.snapshot(), registry.catalogue, ["cis"])
+    configs = ROOT / "fixtures" / "configs"
+    ios = configs / "batfish_example_live" / "as2dept1.cfg"
+    junos = configs / "batfish_srx_testbed" / "junos-srx-1.cfg"
+    with_group = junos.read_text() + "set system apply-groups g\n"  # emptied, unread collections
+    for name, text in ((ios.name, ios.read_text()), (junos.name, junos.read_text()),
+                       ("groups.cfg", with_group), ("junk.cfg", "not a config at all\n")):
+        result = audit_device(text, name, "d1", registry.snapshot(), registry.catalogue, ["cis"])
         validator.validate(result)

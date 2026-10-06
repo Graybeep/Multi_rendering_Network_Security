@@ -83,8 +83,11 @@ value defined in one place is inherited elsewhere. Decide in 2.1 whether v1 reso
 
 *Decided in 2.1:* v1 does **not** resolve `apply-groups`; no whole Junos fixture uses it.
 When a pack-declared marker (`apply-groups`) appears anywhere on a device, absent fields
-are not defaulted, and every collection is treated as of unknown completeness, since a
-group can add items (users, interfaces) that the local lines do not show. Explicitly
+are not defaulted, and every collection is marked unread (`unknown`, emptied), since a
+group can add items (users, interfaces) that the local lines do not show. The canonical
+schema has no "partly known" list state, so a true FAIL on a visible item also becomes
+NOT_DETERMINED on such a device. **Team decision pending:** add a `partial` collection
+state (an additive schema change) so visible FAILs survive while PASS stays blocked. Explicitly
 set values stay `mapped`, because local statements override group-inherited ones. The
 mechanism lands with `junos.yaml` in 2.2.
 

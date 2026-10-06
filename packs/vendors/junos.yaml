@@ -1,0 +1,248 @@
+# Juniper Junos, flat `set` form (`show configuration | display set`). Vendor knowledge lives here, not in code.
+# Maps to the SAME canonical fields as cisco_ios.yaml, so every rule pack runs on Junos unchanged.
+#
+# Statements arrive from the set_commands reader as full paths without the verb:
+#   set system services ssh protocol-version v2  →  "system services ssh protocol-version v2"
+# so collection keys are named groups in `match`, never `scope`.
+#
+# Scope of this pack: settings every Junos platform shares (system, snmp, interfaces).
+# SRX-only areas (security zones, policies, NAT) must not be added here without a platform scope:
+# that rebuilds the per-vendor coupling the canonical model exists to remove. See PLAN 2.2 hazards.
+#
+# REVIEW(H): every `absent: default` below states Junos behaviour from 12.1 onwards and needs a human
+# sign-off. Where the default was not certain the field is `absent: unknown` and says why.
+id: junos
+version: 1.0.0
+vendor: juniper
+os_family: junos
+reader: set_commands
+min_score: 2
+detect:
+  - {pattern: '^set version \d+\.\d+[A-Z]', weight: 2}       # 15.1X49-D15.4, 18.4R2
+  - {pattern: '^set interfaces \S+ unit \d+ ', weight: 2}    # logical units are Junos-specific
+  - '^set system host-name '
+  - '^set protocols '
+  - '^set policy-options '
+facts:
+  hostname: {pattern: '^set system host-name (\S+)$', group: 1}
+  os_version: {pattern: '^set version (\S+)$', group: 1}
+
+# Configuration groups: v1 does not resolve them (PLAN 2.1 decision). Any applied group makes
+# unstated settings NOT_DETERMINED instead of defaulted. `apply-groups-except` only removes, so
+# it does not trigger this.
+unresolved_inheritance:
+  - '(?:^| )apply-groups (?!-)'
+
+mappings:
+  # ── SSH ──────────────────────────────────────────────────────────────
+  - id: junos.ssh.enabled
+    canonical: services.ssh.enabled
+    match: '^system services ssh(?: .*)?$'
+    value: true
+    absent: default
+    default: false           # Junos runs no management service that is not configured under system services
+    default_os_version: '>=12.1'
+    fixture: set system services ssh
+    expect: true
+
+  - id: junos.ssh.version
+    canonical: services.ssh.version
+    match: '^system services ssh protocol-version (v1|v2)$'
+    map: {v1: 1, v2: 2}
+    keep: min                # `protocol-version [v1 v2]` is two lines; the weakest accepted version is the answer
+    absent: default
+    default: 2               # v2 only unless v1 is configured explicitly
+    default_os_version: '>=12.1'
+    fixture: set system services ssh protocol-version v2
+    expect: 2
+
+  - id: junos.ssh.auth_retries
+    canonical: services.ssh.max_auth_tries
+    match: '^system login retry-options tries-before-disconnect (\d+)$'
+    absent: unknown          # believed 10 when unset; not declared until a human confirms it
+    fixture: set system login retry-options tries-before-disconnect 3
+    expect: 3
+
+  # ── Other management services ────────────────────────────────────────
+  - id: junos.telnet.enabled
+    canonical: services.telnet.enabled
+    match: '^system services telnet(?: .*)?$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.1'
+    fixture: set system services telnet
+    expect: true
+
+  - id: junos.http.enabled
+    canonical: services.http.enabled
+    match: '^system services web-management http(?: .*)?$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.1'
+    fixture: set system services web-management http interface fxp0.0
+    expect: true
+
+  - id: junos.https.enabled
+    canonical: services.https.enabled
+    match: '^system services web-management https(?: .*)?$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.1'
+    fixture: set system services web-management https system-generated-certificate
+    expect: true
+
+  # ── Authentication ───────────────────────────────────────────────────
+  # authentication-order is a list spread over several lines; any remote method means AAA is in use.
+  - id: junos.aaa.remote
+    canonical: auth.aaa.enabled
+    match: '^system authentication-order (radius|tacplus)$'
+    value: true
+    keep: max
+    absent: default
+    default: false           # without authentication-order, only local passwords are checked
+    default_os_version: '>=12.1'
+    fixture: set system authentication-order tacplus
+    expect: true
+
+  - id: junos.aaa.local
+    canonical: auth.aaa.enabled
+    match: '^system authentication-order password$'
+    value: false
+    keep: max
+    absent: default
+    default: false
+    default_os_version: '>=12.1'
+    fixture: set system authentication-order password
+    expect: false
+
+  # REVIEW(H): Junos has no enable mode. The root account password is the closest analogue of the
+  # privileged-mode administrator password this field describes. Junos refuses to commit without it,
+  # so its absence means we did not see the whole file, hence `unknown`.
+  - id: junos.root_password
+    canonical: auth.enable_secret.algorithm
+    match: '^system root-authentication encrypted-password (\$\d\$)\S*$'
+    map: {'$1$': md5, '$5$': sha256_crypt, '$6$': sha512_crypt}
+    absent: unknown
+    fixture: set system root-authentication encrypted-password "$6$abc$def"
+    expect: sha512_crypt
+
+  - id: junos.password_min_length
+    canonical: auth.password_min_length
+    match: '^system login password minimum-length (\d+)$'
+    absent: unknown          # the unset default differs across releases
+    fixture: set system login password minimum-length 12
+    expect: 12
+
+  - id: junos.login_banner
+    canonical: auth.login_banner.present
+    match: '^system login message .+$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.1'
+    fixture: set system login message "Authorised access only"
+    expect: true
+
+  # Every Junos login user must have a class, so the class line creates the account.
+  - id: junos.local_users
+    canonical: auth.local_users[]
+    match: '^system login user (?P<name>\S+) class \S+$'
+    empty: mapped
+    fixture: set system login user admin class super-user
+
+  - id: junos.local_users.password
+    canonical: auth.local_users[]
+    match: '^system login user (?P<name>\S+) authentication encrypted-password (?P<password_algorithm>\$\d\$)\S*$'
+    map:
+      password_algorithm: {'$1$': md5, '$5$': sha256_crypt, '$6$': sha512_crypt}
+    empty: mapped
+    fixture: set system login user admin authentication encrypted-password "$1$abc$def"
+
+  # ── Logging ──────────────────────────────────────────────────────────
+  - id: junos.syslog.host
+    canonical: logging.servers[]
+    match: '^system syslog host (?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: set system syslog host 10.0.0.5 any notice
+
+  # ── NTP ──────────────────────────────────────────────────────────────
+  - id: junos.ntp.server
+    canonical: ntp.servers[]
+    match: '^system ntp server (?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: set system ntp server 10.0.0.1 key 1
+
+  - id: junos.ntp.authenticate
+    canonical: ntp.authenticate
+    match: '^system ntp trusted-key \d+$'
+    value: true
+    absent: default
+    default: false           # without a trusted key, time from any configured server is accepted
+    default_os_version: '>=12.1'
+    fixture: set system ntp trusted-key 1
+    expect: true
+
+  # ── SNMP ─────────────────────────────────────────────────────────────
+  - id: junos.snmp.community
+    canonical: snmp.communities[]
+    match: '^snmp community (?P<string_redacted>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: set snmp community s3cret clients 10.0.0.0/8
+
+  - id: junos.snmp.community.authorization
+    canonical: snmp.communities[]
+    match: '^snmp community (?P<string_redacted>\S+) authorization (?P<access>read-only|read-write)$'
+    map:
+      access: {read-only: ro, read-write: rw}
+    priority: 1              # the same line also creates the item; this mapping adds its access
+    empty: mapped
+    fixture: set snmp community s3cret authorization read-only
+
+  - id: junos.snmp.version_from_community
+    canonical: snmp.version
+    match: '^snmp community '
+    value: '1'               # a community answers v1 and v2c; v1 is the weakest answered
+    absent: unknown
+    fixture: set snmp community s3cret authorization read-only
+    expect: '1'
+
+  # ── Interfaces ───────────────────────────────────────────────────────
+  # Keyed by physical interface. A unit-level setting on any unit marks the interface, which can only
+  # make a check stricter, never hide a finding.
+  - id: junos.intf
+    canonical: interfaces[]
+    match: '^interfaces (?P<name>\S+)(?: .*)?$'
+    empty: unknown
+    fixture: set interfaces ge-0/0/0 unit 0 family inet address 10.0.0.1/24
+
+  - id: junos.intf.disable
+    canonical: 'interfaces[{name}].shutdown'
+    match: '^interfaces (?P<name>\S+) disable$'
+    value: true
+    absent: default
+    default: false
+    default_os_version: '>=12.1'
+    fixture: set interfaces ge-0/0/0 disable
+    expect: true
+
+  - id: junos.intf.description
+    canonical: 'interfaces[{name}].description'
+    match: '^interfaces (?P<name>\S+) description (?P<value>.+)$'
+    absent: default
+    default: null
+    default_os_version: '>=12.1'
+    fixture: set interfaces ge-0/0/0 description uplink
+    expect: uplink
+
+  - id: junos.intf.proxy_arp
+    canonical: 'interfaces[{name}].proxy_arp'
+    match: '^interfaces (?P<name>\S+) unit \d+ proxy-arp(?: .*)?$'
+    value: true
+    absent: default
+    default: false           # Junos answers no proxy ARP unless a unit enables it
+    default_os_version: '>=12.1'
+    fixture: set interfaces ge-0/0/0 unit 0 proxy-arp restricted
+    expect: true
