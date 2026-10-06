@@ -1,7 +1,6 @@
 """`scan ./configs --framework cis --out ./reports`
 
-Each device runs in a worker process with a hard timeout. A hung or crashing device becomes one
-error row; the pool is torn down and rebuilt so the rest of the batch continues.
+Reads files, runs them through `src.batch`, writes JSON and PDF per device.
 """
 
 from __future__ import annotations
@@ -9,36 +8,17 @@ from __future__ import annotations
 import argparse
 import json
 import multiprocessing as mp
-import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.audit import audit_device
+from src.batch import MAX_BYTES, Job, device_ids, error_row, run_batch
 from src.registry import Registry
 from src.report.pdf import render_pdf
 from src.versions import release
 
-MAX_BYTES = 5 * 1024 * 1024
 DEFAULT_PACKS = Path(__file__).resolve().parents[2] / "packs"
-
-_registry: Registry | None = None  # per worker process
-
-
-def _worker(path: str, device_id: str, packs: str, frameworks: list[str],
-            os_version: str | None) -> dict[str, Any]:
-    global _registry
-    if _registry is None or _registry.root != Path(packs):
-        _registry = Registry(Path(packs))
-    p = Path(path)
-    try:
-        text = p.read_bytes().decode("utf-8", errors="replace")
-        return audit_device(text, p.name, device_id, _registry.snapshot(), _registry.catalogue, frameworks,
-                            os_version)
-    except Exception as exc:  # noqa: BLE001 — per-device isolation: one bad file never kills the batch
-        return {"device_id": device_id, "filename": p.name, "status": "error",
-                "error": f"{type(exc).__name__}: {exc}"[:300]}
 
 
 def _collect(target: Path) -> list[Path]:
@@ -48,48 +28,20 @@ def _collect(target: Path) -> list[Path]:
                   and p.suffix.lower() not in {".md", ".txt", ".pdf", ".json"})
 
 
-def _device_ids(paths: list[Path]) -> list[str]:
-    seen: dict[str, int] = {}
-    out = []
-    for p in paths:
-        base = re.sub(r"[^A-Za-z0-9_-]", "_", p.stem)[:56] or "device"
-        n = seen.get(base, 0)
-        seen[base] = n + 1
-        out.append(base if n == 0 else f"{base}-{n + 1}")
-    return out
-
-
 def run(paths: list[Path], frameworks: list[str], packs: Path, workers: int, timeout: float,
         os_version: str | None = None) -> list[dict[str, Any]]:
-    ids = _device_ids(paths)
+    ids = device_ids([p.name for p in paths])
     results: dict[int, dict[str, Any]] = {}
-    pending = list(range(len(paths)))
-    for i in list(pending):
-        if paths[i].stat().st_size > MAX_BYTES:
-            results[i] = {"device_id": ids[i], "filename": paths[i].name, "status": "error",
-                          "error": f"file larger than {MAX_BYTES // (1024 * 1024)} MB"}
-            pending.remove(i)
-
-    ctx = mp.get_context("spawn")
-    while pending:
-        with ctx.Pool(processes=max(1, min(workers, len(pending)))) as pool:
-            jobs = {i: pool.apply_async(_worker, (str(paths[i]), ids[i], str(packs), frameworks, os_version))
-                    for i in pending}
-            hung = None
-            for i in pending:
-                try:
-                    results[i] = jobs[i].get(timeout=timeout)
-                except mp.TimeoutError:
-                    hung = i
-                    break
-            if hung is None:
-                pending = []
-            else:
-                results[hung] = {"device_id": ids[hung], "filename": paths[hung].name, "status": "error",
-                                 "error": f"timed out after {timeout:.0f}s; worker killed"}
-                done = set(results)
-                pending = [i for i in pending if i not in done]
-                pool.terminate()
+    jobs: list[Job] = []
+    index: list[int] = []
+    for i, p in enumerate(paths):
+        if p.stat().st_size > MAX_BYTES:
+            results[i] = error_row(ids[i], p.name, f"file larger than {MAX_BYTES // (1024 * 1024)} MB")
+            continue
+        jobs.append(Job(ids[i], p.name, p.read_bytes().decode("utf-8", errors="replace")))
+        index.append(i)
+    for i, r in zip(index, run_batch(jobs, frameworks, packs, workers, timeout, os_version), strict=True):
+        results[i] = r
     return [results[i] for i in range(len(paths))]
 
 
