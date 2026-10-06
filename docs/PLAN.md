@@ -81,6 +81,13 @@ value defined in one place is inherited elsewhere. Decide in 2.1 whether v1 reso
 `apply-groups`. If it does not, affected fields resolve `state=unknown`, never
 `defaulted`. A silent wrong value here is a false PASS.
 
+*Decided in 2.1:* v1 does **not** resolve `apply-groups`; no whole Junos fixture uses it.
+When a pack-declared marker (`apply-groups`) appears anywhere on a device, absent fields
+are not defaulted, and every collection is treated as of unknown completeness, since a
+group can add items (users, interfaces) that the local lines do not show. Explicitly
+set values stay `mapped`, because local statements override group-inherited ones. The
+mechanism lands with `junos.yaml` in 2.2.
+
 **Hazard — SRX is a different platform from the border routers.** Zones, security
 policies and NAT exist on SRX only. The 15 system-level rules (ssh, telnet, ntp, syslog,
 snmp) live under `system` and are unaffected. `junos.yaml` must not accumulate SRX-only
