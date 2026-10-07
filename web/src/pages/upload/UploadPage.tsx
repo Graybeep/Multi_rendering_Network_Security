@@ -16,7 +16,7 @@ export function UploadPage({ onCreated }: { onCreated: (scanId: string) => void 
   async function submit() {
     if (!files.length) { setError('Select at least one configuration file or a zip archive.'); return; }
     setSubmitting(true); setError(null);
-    try { onCreated(await createScan(files, framework)); }
+    try { onCreated(await createScan(files, [framework])); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Upload failed.'); }
     finally { setSubmitting(false); }
   }

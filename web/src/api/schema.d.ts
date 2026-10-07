@@ -13,7 +13,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Upload a batch of configuration files and start a scan */
+        /**
+         * Upload a batch of configuration files and start a scan
+         * @description Accepts individual config files and/or zip archives. Each file becomes an
+         *     independent device job; a malformed file becomes a device with status
+         *     `error`, never a failed batch.
+         */
         post: operations["createScan"];
         delete?: never;
         options?: never;
@@ -25,13 +30,13 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example scn_01J9ZK4Q8M3T */
-                scan_id: components["parameters"]["ScanId"];
-            };
+            path?: never;
             cookie?: never;
         };
-        /** Scan status, progress and device list */
+        /**
+         * Scan status, progress and per-device summaries
+         * @description Poll this while `status` is `queued` or `running`; devices appear as they finish.
+         */
         get: operations["getScan"];
         put?: never;
         post?: never;
@@ -45,16 +50,11 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example scn_01J9ZK4Q8M3T */
-                scan_id: components["parameters"]["ScanId"];
-                /** @example dev_01J9ZK4QA7N2 */
-                device_id: components["parameters"]["DeviceId"];
-            };
+            path?: never;
             cookie?: never;
         };
-        /** Findings for one device, each with cited evidence and remediation */
-        get: operations["getDeviceResult"];
+        /** Findings for one device, each with evidence and remediation */
+        get: operations["getDeviceFindings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -67,12 +67,7 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example scn_01J9ZK4Q8M3T */
-                scan_id: components["parameters"]["ScanId"];
-                /** @example dev_01J9ZK4QA7N2 */
-                device_id: components["parameters"]["DeviceId"];
-            };
+            path?: never;
             cookie?: never;
         };
         /** Per-device PDF report */
@@ -89,13 +84,16 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example scn_01J9ZK4Q8M3T */
-                scan_id: components["parameters"]["ScanId"];
-            };
+            path?: never;
             cookie?: never;
         };
-        /** Unmatched-line clusters for this scan, sorted by device count descending */
+        /**
+         * Unrecognised-line clusters for a scan, sorted by device count descending
+         * @description Built from the devices that have finished, so it can be polled while a scan runs. Block
+         *     headers (`router bgp 65000`) are not questions; they appear as a cluster's `scope`. A device
+         *     with no vendor pack raises no questions, since there is no pack to extend. Cluster ids are
+         *     stable: the same pattern under the same pack has the same id in every scan.
+         */
         get: operations["listClusters"];
         put?: never;
         post?: never;
@@ -109,16 +107,15 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example clu_7f3a9c2e */
-                cluster_id: components["parameters"]["ClusterId"];
-            };
+            path?: never;
             cookie?: never;
         };
         /**
          * Ranked candidate canonical fields for a cluster
-         * @description Advisory only. Ranks the cluster template against canonical field
-         *     descriptions. Nothing here is applied without a human calling confirm.
+         * @description Candidates pre-fill a form. They are never applied automatically. The
+         *     administrator may pick any field from `/api/schema/fields` instead.
+         *     Only fields a learned line can fill are offered. `candidates` may be empty when no field
+         *     description shares a word with the line; the administrator then picks from the field list.
          */
         get: operations["getClusterSuggestions"];
         put?: never;
@@ -133,16 +130,52 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example clu_7f3a9c2e */
-                cluster_id: components["parameters"]["ClusterId"];
-            };
+            path?: never;
             cookie?: never;
         };
         get?: never;
         put?: never;
-        /** Human confirms a mapping; writes packs/learned/<vendor>.yaml and reloads */
+        /**
+         * Human confirms a mapping; writes a learned pack fragment
+         * @description With `dry_run=true` nothing is written and the response shows the exact
+         *     pack fragment that would be written, for the "show before writing" step.
+         *     Without it, the fragment is appended to `packs/learned/<vendor>.yaml`,
+         *     the registry reloads and the parse cache is invalidated. Re-run with
+         *     `POST /api/scans/{id}/reevaluate` to see the answer applied.
+         *
+         *     The mapping is checked before anything is written: it must match every
+         *     occurrence in the cluster, and the learned pack must load beside its vendor
+         *     pack with every fixture passing. A refused answer writes nothing.
+         */
         post: operations["confirmCluster"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clusters/{cluster_id}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Human answers "not a security setting"; writes an ignore entry
+         * @description A third answer beside confirming a field. It is never a default and never pre-selected,
+         *     whatever the suggestion scores are. The entry goes in `packs/learned/<vendor>.yaml` with
+         *     `canonical: null`, `ignore: true` and the stated `reason`. It applies to every device of
+         *     that vendor, and it is removed like any pack entry.
+         *
+         *     An ignored line leaves the question queue and nothing else changes. It writes no field,
+         *     so it never changes a verdict: a rule whose field is still unmapped stays NOT_DETERMINED.
+         *     `dry_run`, validation and the reload behave as for confirm. Re-run with
+         *     `POST /api/scans/{id}/reevaluate` to see the cluster gone.
+         */
+        post: operations["ignoreCluster"];
         delete?: never;
         options?: never;
         head?: never;
@@ -153,15 +186,12 @@ export interface paths {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                /** @example scn_01J9ZK4Q8M3T */
-                scan_id: components["parameters"]["ScanId"];
-            };
+            path?: never;
             cookie?: never;
         };
         get?: never;
         put?: never;
-        /** Re-run mapping and evaluation from the parse cache with current packs */
+        /** Re-run a scan from the parse cache with current packs */
         post: operations["reevaluateScan"];
         delete?: never;
         options?: never;
@@ -176,7 +206,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Canonical fields and their plain-English descriptions */
+        /** Canonical fields with plain-English descriptions */
         get: operations["listSchemaFields"];
         put?: never;
         post?: never;
@@ -193,7 +223,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Installed packs and versions */
+        /** Installed vendor, rule, fix and learned packs with versions */
         get: operations["listPacks"];
         put?: never;
         post?: never;
@@ -207,54 +237,51 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Id: string;
         /** @enum {string} */
         Framework: "cis" | "nist" | "stig" | "iso";
-        /** @enum {string} */
+        /**
+         * @description NOT_DETERMINED means a required field was not read. It is not a failure.
+         * @enum {string}
+         */
         Verdict: "PASS" | "FAIL" | "NOT_DETERMINED";
         /** @enum {string} */
         Severity: "critical" | "high" | "medium" | "low" | "info";
         /** @enum {string} */
         FieldState: "mapped" | "defaulted" | "unknown";
         Error: {
+            /** @description Stable machine-readable error code */
             code: string;
+            /** @description Human-readable explanation */
             message: string;
+            /** @description Offending request or pack field, when there is one */
+            field?: string | null;
         };
         ScanCreated: {
-            scan_id: string;
+            scan_id: components["schemas"]["Id"];
         };
-        Counts: {
+        /** @enum {string} */
+        ScanStatus: "queued" | "running" | "completed" | "failed";
+        /** @enum {string} */
+        DeviceStatus: "queued" | "parsing" | "evaluating" | "done" | "error";
+        /**
+         * @description How much of the canonical model was actually read. Shown beside every
+         *     compliance figure; a percentage without coverage has no denominator.
+         */
+        Coverage: {
+            mapped: number;
+            defaulted: number;
+            unknown: number;
+            /** @description (mapped + defaulted) / (mapped + defaulted + unknown) */
+            ratio: number;
+        };
+        VerdictCounts: {
             pass: number;
             fail: number;
             not_determined: number;
         };
-        DeviceSummary: {
-            device_id: string;
-            filename: string;
-            hostname: string | null;
-            /** @description Vendor pack id that detected this file; null until detected or if none matched. */
-            vendor: string | null;
-            /** @enum {string} */
-            status: "queued" | "running" | "completed" | "failed";
-            error: null | components["schemas"]["Error"];
-            counts: components["schemas"]["Counts"];
-        };
-        Scan: {
-            scan_id: string;
-            framework: components["schemas"]["Framework"];
-            /** @enum {string} */
-            status: "queued" | "running" | "completed" | "failed";
-            /** Format: date-time */
-            created_at: string;
-            /** Format: date-time */
-            finished_at: string | null;
-            progress: {
-                total: number;
-                done: number;
-                failed: number;
-            };
-            devices: components["schemas"]["DeviceSummary"][];
-        };
-        Identification: {
+        /** @description Fingerprint from ingest. Any element may be null if not detected. */
+        DeviceIdentity: {
             hostname: string | null;
             vendor: string | null;
             os_family: string | null;
@@ -262,183 +289,236 @@ export interface components {
             model: string | null;
             serial: string | null;
         };
-        Evidence: {
+        DeviceSummary: {
+            device_id: components["schemas"]["Id"];
+            filename: string;
+            status: components["schemas"]["DeviceStatus"];
+            /** @description Set only when status is error. Never contains raw config text. */
+            error?: string | null;
+            /** @description Detected vendor pack as id@version; null when detection was ambiguous or failed. */
+            vendor_pack?: string | null;
+            /** @description True when two vendor packs tied on detection; the device is not guessed. */
+            detection_ambiguous?: boolean;
+            identity?: components["schemas"]["DeviceIdentity"];
+            verdicts?: components["schemas"]["VerdictCounts"];
+            coverage?: components["schemas"]["Coverage"];
+        };
+        Scan: {
+            scan_id: components["schemas"]["Id"];
+            status: components["schemas"]["ScanStatus"];
+            frameworks: components["schemas"]["Framework"][];
+            /** Format: date-time */
+            created_at: string;
+            progress: {
+                total: number;
+                done: number;
+                error: number;
+            };
+            devices: components["schemas"]["DeviceSummary"][];
+        };
+        /** @description One cited config line. Text is redacted at ingest; secrets appear as ****. */
+        EvidenceLine: {
+            /** @example services.ssh.version */
             canonical_field: string;
-            /** @description Null when state is defaulted. */
-            line: number | null;
-            /** @description The cited config line after redaction. Secrets appear as ****; algorithm tokens are kept. */
-            text: string | null;
-            mapping_id: string;
-            pack_version: string;
             state: components["schemas"]["FieldState"];
+            /** @description The canonical value. For `defaulted` this is the pack-declared default the verdict used. */
+            value?: unknown;
+            /** @description Null when the value was defaulted (no line exists) or unknown. */
+            line_no: number | null;
+            /** @description Redacted source line; null when line_no is null. */
+            text: string | null;
+            mapping_id: string | null;
+            /** @description Vendor pack as id@version */
+            pack_version: string | null;
+            /**
+             * @description For a defaulted value with no config line: `platform_constant` is a fact the vendor pack states for the whole platform (e.g. no CDP on Junos); `operator` was supplied by whoever ran the scan (e.g. the OS version). Null otherwise.
+             * @enum {string|null}
+             */
+            source?: "platform_constant" | "operator" | null;
         };
         Remediation: {
             fix_id: string;
+            /** @description Rendered vendor CLI, idempotent (safe to paste twice). */
             commands: string[];
             reload_required: boolean;
             rollback: string[];
+            /** @description Placeholders such as <NEW_SECRET> the operator must replace before pasting. Highlight them. */
+            operator_input?: string[];
+            /** @description Safety note to show with the commands, e.g. lock-out risk. */
+            note?: string | null;
         };
         Finding: {
+            /** @example CIS-NET-1.2.3 */
             rule_id: string;
-            framework: components["schemas"]["Framework"];
             title: string;
+            /** @description Benchmark control ID. Null until a human has verified the citation; show "uncited", not a guess. */
+            control?: string | null;
+            framework: components["schemas"]["Framework"];
             severity: components["schemas"]["Severity"];
             verdict: components["schemas"]["Verdict"];
-            /** @description Set only for NOT_DETERMINED. */
-            reason: null | {
-                /** @enum {string} */
-                code: "required_field_unknown" | "collection_unknown" | "not_applicable";
-                fields: string[];
-            };
-            evidence: components["schemas"]["Evidence"][];
-            /** @description Set only for FAIL. */
-            remediation: null | components["schemas"]["Remediation"];
+            /** @description Rule pack as id@version */
+            rule_pack_version: string;
+            evidence: components["schemas"]["EvidenceLine"][];
+            /** @description Required canonical fields whose state was unknown, or lists (path ending in []) that were read only in part. Non-empty only for NOT_DETERMINED. */
+            missing_fields: string[];
+            /** @description Fix pack as id@version, when remediation is present */
+            fix_pack_version?: string | null;
+            /** @description Set when a rule could not be evaluated (pack bug); the verdict is then NOT_DETERMINED. */
+            error?: string | null;
+            /** @description Present only for FAIL with a fix template for this vendor and OS version. */
+            remediation: components["schemas"]["Remediation"] | null;
         };
-        DeviceResult: {
-            scan_id: string;
-            device_id: string;
-            filename: string;
-            config_sha256: string | null;
-            identification: components["schemas"]["Identification"];
-            pack_versions: string[];
-            coverage: {
-                lines_total: number;
-                lines_mapped: number;
-                lines_unmapped: number;
-            };
+        DeviceFindings: components["schemas"]["DeviceSummary"] & {
             findings: components["schemas"]["Finding"][];
         };
         Cluster: {
-            cluster_id: string;
+            cluster_id: components["schemas"]["Id"];
+            /** @description Vendor pack id the lines were read under */
             vendor: string;
-            /** @description Hash of the normalised template. */
+            /**
+             * @description Normalised template with typed placeholders: <INT>, <IPV4>, <PREFIX>, <IPV6>, <MAC>,
+             *     <STR> (quoted string), <IFACE>, <DOMAIN>, and <NAME> (a name the device gave its own
+             *     hostname, user, list or line).
+             */
             signature: string;
-            /** @description Normalised line with typed placeholders (<IP>, <MAC>, <HOST>, <IFACE>, <STR>, <INT>). */
-            template: string;
-            /** @description Normalised enclosing block, if any. */
-            scope: string | null;
+            /** @description One redacted raw line from the cluster. */
+            sample_line: string;
+            /** @description Distinct devices containing this pattern */
             device_count: number;
-            line_count: number;
-            /** @enum {string} */
-            status: "open" | "confirmed";
+            /** @description Total matching lines across the batch */
+            occurrence_count: number;
+            /** @description Enclosing block template when the line is nested, e.g. "interface <IFACE>". */
+            scope?: string | null;
         };
         Suggestion: {
             canonical_field: string;
-            description: string;
             score: number;
             /** @enum {string} */
             tier: "lexical" | "embedding" | "llm";
+            /** @description The canonical field description the line was ranked against */
+            description: string;
         };
-        SuggestionList: {
-            cluster_id: string;
-            template: string;
-            suggestions: components["schemas"]["Suggestion"][];
+        Suggestions: {
+            cluster_id: components["schemas"]["Id"];
+            candidates: components["schemas"]["Suggestion"][];
         };
         ConfirmRequest: {
+            /** @description Any path from /api/schema/fields, not only a suggested one. */
             canonical_field: string;
-            /** @enum {string} */
+            /**
+             * @description What a device means when the line is missing.
+             * @enum {string}
+             */
             absent: "unknown" | "default";
-            /** @description Required non-null when absent is default; must be null when absent is unknown. */
-            default: boolean | number | string | null;
+            /**
+             * @description Required when absent is "default" on a single-value field. Must match the canonical
+             *     field's type. A list field takes none: absent "default" there means no line is an empty list.
+             */
+            default?: unknown;
+            /**
+             * @description Required with a default: the OS releases the default holds for. Defaults change
+             *     between releases, so a default is never recorded without one.
+             * @example >=12.0
+             */
+            default_os_version?: string | null;
+            /**
+             * @description Fixed value to assign when the line matches (e.g. a bare flag line). Required for a
+             *     true/false field, and when the line carries more than one value that could fill the
+             *     field; otherwise the one placeholder of the right type is read.
+             */
+            value?: unknown;
+            /** @description Who confirmed the mapping; recorded as provenance. */
+            author?: string | null;
+        };
+        IgnoreRequest: {
+            /**
+             * @description Free text, required. Why the line carries no security setting. Recorded in the pack.
+             *     The form should ask for it with an empty text box, never a pre-filled one.
+             * @example structural marker
+             * @example carries no security setting
+             */
+            reason: string;
+            /** @description Who answered; recorded as provenance. */
+            author?: string | null;
         };
         ConfirmResult: {
-            mapping_id: string;
-            canonical_field: string;
-            pack: string;
+            /** @description False when dry_run=true */
+            written: boolean;
+            /** @example packs/learned/cisco_ios.yaml */
+            pack_path: string;
+            /** @description Version the learned pack has (or would have) after the write */
             pack_version: string;
-            path: string;
-            cluster_signature: string;
+            mapping_id: string;
+            /** @description Exact YAML that is (or would be) appended */
+            fragment_yaml: string;
         };
         SchemaField: {
+            /** @example interfaces[].proxy_arp */
             path: string;
-            /** @enum {string} */
-            type: "boolean" | "integer" | "string";
-            /** @description True if the path passes through a list ([]). */
-            collection: boolean;
+            /** @description JSON type of the field's value */
+            type: string;
+            enum?: unknown[] | null;
             description: string;
+            /** @description Default absent-semantics guidance */
+            absent: string;
+            /** @description True for a collection path ending in [] */
+            collection: boolean;
         };
         Pack: {
             id: string;
             /** @enum {string} */
-            kind: "vendor" | "rules" | "fixes" | "learned";
+            kind: "vendor" | "rule" | "fix" | "learned";
             version: string;
             /** @enum {string} */
-            source: "base" | "learned";
-            path: string;
-            valid: boolean;
-            /** @description Validation error naming the offending field when valid is false. */
-            error: string | null;
+            source: "shipped" | "learned";
+            framework?: components["schemas"]["Framework"];
+            vendor?: string | null;
+            mapping_count?: number | null;
+            rule_count?: number | null;
         };
     };
     responses: {
-        /** @description Malformed request. */
+        /** @description Malformed request */
         BadRequest: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                /**
-                 * @example {
-                 *       "code": "no_files",
-                 *       "message": "At least one configuration file is required."
-                 *     }
-                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Resource does not exist. */
+        /** @description No such resource */
         NotFound: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                /**
-                 * @example {
-                 *       "code": "not_found",
-                 *       "message": "Scan scn_01J9ZK4Q8M3T was not found."
-                 *     }
-                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Upload exceeds the configured size limit. */
-        PayloadTooLarge: {
+        /** @description Upload exceeds the size limit */
+        TooLarge: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                /**
-                 * @example {
-                 *       "code": "payload_too_large",
-                 *       "message": "Upload exceeds the size limit."
-                 *     }
-                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
-        /** @description Request is well-formed but semantically invalid. */
+        /** @description Request body failed validation */
         Unprocessable: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
-                /**
-                 * @example {
-                 *       "code": "unknown_canonical_field",
-                 *       "message": "services.ssh.timeot is not a canonical field."
-                 *     }
-                 */
                 "application/json": components["schemas"]["Error"];
             };
         };
     };
     parameters: {
-        /** @example scn_01J9ZK4Q8M3T */
-        ScanId: string;
-        /** @example dev_01J9ZK4QA7N2 */
-        DeviceId: string;
-        /** @example clu_7f3a9c2e */
-        ClusterId: string;
+        ScanId: components["schemas"]["Id"];
+        DeviceId: components["schemas"]["Id"];
+        ClusterId: components["schemas"]["Id"];
     };
     requestBodies: never;
     headers: never;
@@ -456,30 +536,25 @@ export interface operations {
         requestBody: {
             content: {
                 "multipart/form-data": {
-                    /** @description One configuration file per device. Raw text is redacted at ingest and never logged. */
                     files: string[];
-                    framework: components["schemas"]["Framework"];
+                    frameworks: components["schemas"]["Framework"][];
+                    /** @description Optional. OS version to assume for devices whose config states none, e.g. 15.1R7. A version stated in the config always wins. Recorded in evidence with source `operator`. */
+                    os_version?: string;
                 };
             };
         };
         responses: {
-            /** @description Scan accepted; device jobs queued. */
+            /** @description Scan accepted and queued */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "scan_id": "scn_01J9ZK4Q8M3T"
-                     *     }
-                     */
                     "application/json": components["schemas"]["ScanCreated"];
                 };
             };
             400: components["responses"]["BadRequest"];
-            413: components["responses"]["PayloadTooLarge"];
-            422: components["responses"]["Unprocessable"];
+            413: components["responses"]["TooLarge"];
         };
     };
     getScan: {
@@ -487,14 +562,13 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @example scn_01J9ZK4Q8M3T */
                 scan_id: components["parameters"]["ScanId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Current scan state. Poll until status is completed or failed. */
+            /** @description Scan */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -506,30 +580,37 @@ export interface operations {
             404: components["responses"]["NotFound"];
         };
     };
-    getDeviceResult: {
+    getDeviceFindings: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @example scn_01J9ZK4Q8M3T */
                 scan_id: components["parameters"]["ScanId"];
-                /** @example dev_01J9ZK4QA7N2 */
                 device_id: components["parameters"]["DeviceId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Per-device result. */
+            /** @description Device findings */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DeviceResult"];
+                    "application/json": components["schemas"]["DeviceFindings"];
                 };
             };
             404: components["responses"]["NotFound"];
+            /** @description Device has not finished evaluating, or ended in error */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getDeviceReport: {
@@ -537,20 +618,16 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @example scn_01J9ZK4Q8M3T */
                 scan_id: components["parameters"]["ScanId"];
-                /** @example dev_01J9ZK4QA7N2 */
                 device_id: components["parameters"]["DeviceId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description PDF with identification, findings by severity, cited lines and remediation. */
+            /** @description PDF report */
             200: {
                 headers: {
-                    /** @example attachment; filename="cisco_ios_minimal.pdf" */
-                    "Content-Disposition"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -558,18 +635,12 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
-            /** @description Device not finished yet, or it failed to parse. */
+            /** @description Device has not finished evaluating, or ended in error */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "code": "device_not_ready",
-                     *       "message": "Device result is not available yet."
-                     *     }
-                     */
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -580,20 +651,23 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @example scn_01J9ZK4Q8M3T */
                 scan_id: components["parameters"]["ScanId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description One entry per normalised template signature. Templates contain typed placeholders, never raw identifiers. */
+            /** @description Cluster queue */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Cluster"][];
+                    "application/json": {
+                        scan_id: components["schemas"]["Id"];
+                        /** @description Sorted by `device_count` descending. */
+                        clusters: components["schemas"]["Cluster"][];
+                    };
                 };
             };
             404: components["responses"]["NotFound"];
@@ -604,57 +678,39 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @example clu_7f3a9c2e */
                 cluster_id: components["parameters"]["ClusterId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Candidates, highest score first. */
+            /** @description Ranked suggestions, highest score first */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "cluster_id": "clu_7f3a9c2e",
-                     *       "template": "ip ssh time-out <INT>",
-                     *       "suggestions": [
-                     *         {
-                     *           "canonical_field": "services.ssh.timeout",
-                     *           "description": "How many seconds an SSH client has to finish logging in before the server drops the connection.",
-                     *           "score": 0.82,
-                     *           "tier": "lexical"
-                     *         },
-                     *         {
-                     *           "canonical_field": "session.idle_timeout",
-                     *           "description": "How many seconds an inactive management session stays open before the device logs it out.",
-                     *           "score": 0.41,
-                     *           "tier": "lexical"
-                     *         },
-                     *         {
-                     *           "canonical_field": "mgmt.vty_lines[].exec_timeout",
-                     *           "description": "How many seconds an idle remote login on this line stays open before it is disconnected.",
-                     *           "score": 0.37,
-                     *           "tier": "lexical"
-                     *         }
-                     *       ]
-                     *     }
-                     */
-                    "application/json": components["schemas"]["SuggestionList"];
+                    "application/json": components["schemas"]["Suggestions"];
                 };
             };
-            404: components["responses"]["NotFound"];
+            /** @description Unknown cluster id. Ids are learned by listing a scan's clusters since the server started. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     confirmCluster: {
         parameters: {
-            query?: never;
+            query?: {
+                dry_run?: boolean;
+            };
             header?: never;
             path: {
-                /** @example clu_7f3a9c2e */
                 cluster_id: components["parameters"]["ClusterId"];
             };
             cookie?: never;
@@ -665,38 +721,68 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Learned mapping written and registry reloaded; parse cache invalidated for affected scans. */
-            201: {
+            /** @description Fragment written (or previewed when dry_run=true) */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "mapping_id": "learned.cisco_ios.clu_7f3a9c2e",
-                     *       "canonical_field": "services.ssh.timeout",
-                     *       "pack": "cisco_ios_learned",
-                     *       "pack_version": "cisco_ios_learned@1.0.1",
-                     *       "path": "packs/learned/cisco_ios.yaml",
-                     *       "cluster_signature": "7f3a9c2e41b0d5a8"
-                     *     }
-                     */
                     "application/json": components["schemas"]["ConfirmResult"];
                 };
             };
             404: components["responses"]["NotFound"];
-            /** @description Ambiguous overlap with an existing mapping, or cluster already confirmed. */
+            /**
+             * @description Nothing written. The mapping would overlap or contradict an existing one (including the
+             *     same cluster confirmed twice), or the vendor pack is no longer installed. `message` says which.
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "code": "mapping_overlap",
-                     *       "message": "Pattern overlaps ios.ssh.version at equal priority."
-                     *     }
-                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            422: components["responses"]["Unprocessable"];
+        };
+    };
+    ignoreCluster: {
+        parameters: {
+            query?: {
+                dry_run?: boolean;
+            };
+            header?: never;
+            path: {
+                cluster_id: components["parameters"]["ClusterId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IgnoreRequest"];
+            };
+        };
+        responses: {
+            /** @description Entry written (or previewed when dry_run=true). `mapping_id` is the ignore entry's id. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmResult"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            /**
+             * @description Nothing written. A mapping matches this line but cannot read it, so the line may carry a
+             *     setting and that mapping needs extending. Also returned when the cluster was already
+             *     answered, or the vendor pack is no longer installed. `message` says which.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -708,40 +794,28 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /** @example scn_01J9ZK4Q8M3T */
                 scan_id: components["parameters"]["ScanId"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Re-evaluation queued. Poll GET /api/scans/{scan_id}. */
+            /** @description Re-evaluation queued; poll getScan */
             202: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "scan_id": "scn_01J9ZK4Q8M3T"
-                     *     }
-                     */
                     "application/json": components["schemas"]["ScanCreated"];
                 };
             };
             404: components["responses"]["NotFound"];
-            /** @description Scan is still running. */
+            /** @description The scan is still queued or running */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "code": "scan_running",
-                     *       "message": "Wait for the current run to finish."
-                     *     }
-                     */
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -756,29 +830,16 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Flattened from schemas/canonical.schema.json. */
+            /** @description Canonical field catalogue */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "path": "services.ssh.version",
-                     *         "type": "integer",
-                     *         "collection": false,
-                     *         "description": "Which SSH protocol version the server allows; version 1 is broken and only version 2 should be accepted."
-                     *       },
-                     *       {
-                     *         "path": "interfaces[].proxy_arp",
-                     *         "type": "boolean",
-                     *         "collection": true,
-                     *         "description": "Whether the port answers address-resolution requests on behalf of other hosts, which can let traffic bypass intended routing."
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["SchemaField"][];
+                    "application/json": {
+                        schema_version: string;
+                        fields: components["schemas"]["SchemaField"][];
+                    };
                 };
             };
         };
@@ -792,44 +853,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every pack currently loaded by the registry. */
+            /** @description Installed packs */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example [
-                     *       {
-                     *         "id": "cisco_ios",
-                     *         "kind": "vendor",
-                     *         "version": "1.0.0",
-                     *         "source": "base",
-                     *         "path": "packs/vendors/cisco_ios.yaml",
-                     *         "valid": true,
-                     *         "error": null
-                     *       },
-                     *       {
-                     *         "id": "cis",
-                     *         "kind": "rules",
-                     *         "version": "1.0.0",
-                     *         "source": "base",
-                     *         "path": "packs/rules/cis.yaml",
-                     *         "valid": true,
-                     *         "error": null
-                     *       },
-                     *       {
-                     *         "id": "cisco_ios",
-                     *         "kind": "fixes",
-                     *         "version": "1.0.0",
-                     *         "source": "base",
-                     *         "path": "packs/fixes/cisco_ios.yaml",
-                     *         "valid": true,
-                     *         "error": null
-                     *       }
-                     *     ]
-                     */
-                    "application/json": components["schemas"]["Pack"][];
+                    "application/json": {
+                        packs: components["schemas"]["Pack"][];
+                    };
                 };
             };
         };
