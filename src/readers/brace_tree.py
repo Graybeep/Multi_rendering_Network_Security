@@ -29,6 +29,15 @@ Anything unbalanced (a stray `}`, a block left open at end of file, a statement 
 `}`) fails the device. Guessing where a block ends would attribute settings to the wrong scope.
 Load-time tags (`replace:`, `delete:`, `update:`) merge into a configuration this file does not
 contain, so they fail the device too.
+
+KNOWN DIVERGENCE from `set_commands`, undecided (docs/review-queue.md, "Reader divergence"):
+a flat file holding both `set a b` and `set a b c` yields two statements, `a b` and `a b c`. A brace
+file can only say `a { b { c; } }`, which yields one, `a b c`; the block `b` is a statement only when
+empty. The two encodings of that configuration therefore give different canonical models whenever a
+mapping matches the prefix statement alone. We carry this on one assumption: Junos `display set`
+prints only leaves, so device output never holds both lines and only a hand-edited flat file can.
+That assumption is about vendor output and has not been verified against a captured pair (PLAN 3.1c).
+tests/test_brace_tree.py pins the current behaviour so a change to either side is deliberate.
 """
 
 from __future__ import annotations

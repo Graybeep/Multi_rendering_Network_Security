@@ -149,6 +149,18 @@ def test_misbraced_file_fails_the_device() -> None:
         read_brace_tree((SNIPPETS / "misbraced").read_text().splitlines())
 
 
+def test_documented_divergence_flat_prefix_statement_has_no_brace_equivalent() -> None:
+    """KNOWN DIVERGENCE, not parity: see brace_tree.py and docs/review-queue.md "Reader divergence".
+
+    Flat keeps `services ssh` beside `services ssh root-login deny`; braces cannot state the prefix
+    separately. If this test fails, one reader changed how it treats a prefix; decide it, then update both.
+    """
+    flat = read_set_commands(["set services ssh", "set services ssh root-login deny"])
+    braces = read_brace_tree(["services {", "    ssh {", "        root-login deny;", "    }", "}"])
+    assert [n.text for n in flat] == ["services ssh", "services ssh root-login deny"]
+    assert [n.text for n in braces] == ["services ssh root-login deny"]
+
+
 # Grammar edges with no Batfish snippet.
 
 def test_inactive_tag_takes_the_subtree_out_of_effect() -> None:
