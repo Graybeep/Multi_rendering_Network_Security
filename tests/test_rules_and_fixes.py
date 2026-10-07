@@ -15,6 +15,9 @@ from src.rules.fixtures import model_from_fragment
 from tests.conftest import CONFIGS, PACKS
 
 RULE_IDS = [r["id"] for r in __import__("yaml").safe_load((PACKS / "rules" / "cis.yaml").read_text())["rules"]]
+# Every rule in every framework's pack, as (framework, rule id).
+ALL_RULES = [(doc["framework"], r["id"]) for doc in (__import__("yaml").safe_load(f.read_text())
+             for f in sorted((PACKS / "rules").glob("*.yaml"))) for r in doc["rules"]]
 MODE_LINES = {"configure terminal", "end", "write memory", "exit"}
 
 
@@ -22,9 +25,9 @@ def _rule(snapshot: Snapshot, rule_id: str) -> Any:
     return next(r for r in snapshot.rules["cis"].rules if r.id == rule_id)
 
 
-@pytest.mark.parametrize("rule_id", RULE_IDS)
-def test_rule_fixtures(snapshot: Snapshot, catalogue: Catalogue, rule_id: str) -> None:
-    rule = _rule(snapshot, rule_id)
+@pytest.mark.parametrize("framework, rule_id", ALL_RULES)
+def test_rule_fixtures(snapshot: Snapshot, catalogue: Catalogue, framework: str, rule_id: str) -> None:
+    rule = next(r for r in snapshot.rules[framework].rules if r.id == rule_id)
     assert evaluate(rule, model_from_fragment(catalogue, rule.raw["fixtures"]["pass"])).verdict == PASS
     assert evaluate(rule, model_from_fragment(catalogue, rule.raw["fixtures"]["fail"])).verdict == FAIL
     assert evaluate(rule, catalogue.empty_model()).verdict == NOT_DETERMINED

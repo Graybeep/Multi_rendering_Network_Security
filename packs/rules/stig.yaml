@@ -1,0 +1,85 @@
+# DISA STIG network-device management checks over the canonical model. Never mentions a vendor.
+#
+# Source: DISA Network Device Management (NDM) STIGs, read from their XCCDF with scripts/stig_xccdf.py:
+#   Cisco IOS Router NDM STIG V3R7 (01 Apr 2026)     U_Cisco_IOS_Router_Y26M04_STIG.zip
+#   Juniper Router NDM STIG V3R2   (30 Jan 2025)     U_Juniper_Router_Y25M01_STIG.zip
+# `control` is the SRG requirement ID, verbatim. It is the one identifier the Cisco and Juniper STIGs share for a
+# requirement; their own rule IDs (CISC-ND-…, JUNI-ND-…, V-…) are listed above each rule, so a reviewer can open
+# either product STIG. DISA STIGs are US government work; titles are still written in our own words.
+#
+# Selection rule (PLAN 3.2): each rule differs from the CIS pack. A stricter threshold for a setting CIS also checks,
+# or a requirement CIS does not make. Every rule needs a human sign-off in docs/review-queue.md before it counts.
+id: stig
+version: 0.1.0
+framework: stig
+rules:
+  # CISC-ND-001450 / V-220136 · JUNI-ND-001440 / V-220141 · CCI-001851 · severity high (CAT I) in both.
+  # CIS cis.logging.remote_host asks for one server; the STIG asks for two.
+  - id: stig.logging.two_servers
+    title: Logs go to at least two remote syslog servers
+    control: SRG-APP-000516-NDM-000350
+    applies_to: {os_family: '*'}
+    requires: ['logging.servers[]']
+    assert: 'length(logging.servers) >= `2`'
+    partial: lower_bound
+    severity: high
+    fixtures:
+      pass: {'logging.servers[]': [10.0.0.5, 10.0.0.6]}
+      fail: {'logging.servers[]': [10.0.0.5]}
+
+  # CISC-ND-000720 / V-215688 · JUNI-ND-000710 / V-217328 · CCI-001133 · severity high (CAT I) in both.
+  # No CIS rule. Narrower than the STIG, which covers every management session; the model has idle timeouts only
+  # for vty lines, so console and aux lines are not checked here. A timeout of 0 means "never", so it fails.
+  - id: stig.vty.idle_timeout
+    title: Remote management sessions are closed after 5 minutes idle
+    control: SRG-APP-000190-NDM-000267
+    applies_to: {os_family: '*'}
+    for_each: 'mgmt.vty_lines[]'
+    requires: ['mgmt.vty_lines[].exec_timeout']
+    assert: 'exec_timeout > `0` && exec_timeout <= `300`'
+    partial: counterexample_sufficient
+    severity: high
+    fixtures:
+      pass: {'mgmt.vty_lines[]': [{name: vty 0 4, exec_timeout: 300}]}
+      fail: {'mgmt.vty_lines[]': [{name: vty 0 4, exec_timeout: 0}]}
+
+  # CISC-ND-000550 / V-215681 · JUNI-ND-000550 / V-217323 · CCI-004066 · severity medium (CAT II) in both.
+  # No CIS rule.
+  - id: stig.password.min_length
+    title: Local passwords must be at least 15 characters
+    control: SRG-APP-000164-NDM-000252
+    applies_to: {os_family: '*'}
+    requires: [auth.password_min_length]
+    assert: 'auth.password_min_length >= `15`'
+    severity: medium
+    fixtures:
+      pass: {auth.password_min_length: 15}
+      fail: {auth.password_min_length: 8}
+
+  # CISC-ND-001030 / V-215693 · JUNI-ND-001020 / V-217334 · severity medium (CAT II) in both.
+  # No CIS rule. The STIG asks for a primary and a secondary time source; two configured servers is our reading.
+  - id: stig.ntp.two_servers
+    title: The clock synchronises from at least two time servers
+    control: SRG-APP-000373-NDM-000298
+    applies_to: {os_family: '*'}
+    requires: ['ntp.servers[]']
+    assert: 'length(ntp.servers) >= `2`'
+    partial: lower_bound
+    severity: medium
+    fixtures:
+      pass: {'ntp.servers[]': [10.0.0.1, 10.0.0.2]}
+      fail: {'ntp.servers[]': [10.0.0.1]}
+
+  # CISC-ND-001370 / V-215709 · JUNI-ND-001360 / V-217350 · CCI-000370 · severity high (CAT I) in both.
+  # No CIS rule (cis.aaa.enabled asks only that AAA is on). Needs auth.aaa.servers[], added for this rule.
+  - id: stig.aaa.two_servers
+    title: Administrator logins are checked against at least two authentication servers
+    control: SRG-APP-000516-NDM-000336
+    applies_to: {os_family: '*'}
+    requires: ['auth.aaa.servers[]']
+    assert: 'length(auth.aaa.servers) >= `2`'
+    partial: lower_bound
+    severity: high
+    fixtures:
+      pass: {'auth.aaa.servers[]': [10.0.0.7, 10.0.0.8]}
+      fail: {'auth.aaa.servers[]': []}
