@@ -163,10 +163,29 @@ one framework and not at all in the other.
 *Measured 2026-10-07, CIS vs STIG 0.1.0, real fixtures.* `as2border2` (Cisco):
 4 fields judged by STIG and not by CIS (`auth.aaa.servers`, vty `exec_timeout`,
 `auth.password_min_length`, `ntp.servers`), all FAIL; `logging.servers` FAIL in
-both. That meets the bar, but only through the "omits" shape. **The threshold shape
-is not yet shown on real data:** syslog is CIS ≥ 1 vs STIG ≥ 2, and every fixture
-has 0 or 2 servers, never 1. It needs a real config with exactly one syslog server
-(or another threshold pair); a made-up config does not count (invariant 4).
+both. That meets the bar, but only through the "omits" shape.
+
+*Threshold shape: proven in a test, not demonstrated on a real device.* Syslog is
+CIS ≥ 1 vs STIG ≥ 2, and every real fixture has 0 or 2 servers, never 1.
+`fixtures/synthetic/ios_one_syslog_server.cfg` is a hand-written config with a
+synthetic header. `tests/test_synthetic_fixtures.py` shows CIS PASS and STIG FAIL on
+it. That proves the code path, not anything about a network. Synthetic fixtures
+never appear in a demo, a report or a slide, and a test checks that no demo script
+reads them. **Demonstrating** the threshold shape on a real device stays open,
+blocked on sourcing, like 3.1c.
+
+*Order (decided 2026-10-07):* STIG sign-off, then the second-syntax sweep (done,
+`review-queue.md`, "rule reads the wrong command"), then NIST. **NIST is blocked
+until the STIG rules are signed.** Each NIST rule's correctness sits downstream of
+a STIG assertion. "Every NIST finding traces to a signed control interpretation"
+only holds if the signatures come first.
+
+*Each NIST rule records, in the review queue:* (a) the CCI and the 800-53 control
+it maps to; (b) one sentence on what the control requires **beyond** what the rule
+checks. CCI maps a STIG check to a control; it does not make our assertion a test
+of that control. 800-53 works at organisation and control-family level (AC-7 is
+not "login retries ≤ 3 on this switch"). We check the device-configuration slice
+and say so. We do not claim NIST compliance.
 
 *Sources.* STIG: DISA XCCDF, parsed by `scripts/stig_xccdf.py`; extract and hashes
 in `docs/sources/stig-ndm-extract.md`. NIST: SP 800-53 Rev. 5, reached through the
@@ -174,7 +193,8 @@ CCIs each STIG rule already cites, so a NIST rule traces STIG → SRG → CCI �
 control rather than being a free interpretation. CIS: **no benchmark document is in
 the repository.** Every CIS rule has `control: null`, and an L1/L2 pair cannot be
 cited without it. A team member must download the CIS Cisco IOS and Juniper
-benchmarks (free with registration) and keep them out of the repository.
+benchmarks (free with registration) and keep them out of the repository. This is a
+team task, not a code task, and it blocks nothing in code today.
 
 ---
 

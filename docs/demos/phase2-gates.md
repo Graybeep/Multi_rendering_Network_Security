@@ -17,6 +17,18 @@ serving a temporary copy of `packs/`. Re-run the script to reproduce; scan ids a
   verdict-moving confirm would have needed a wrong mapping. The confirmed mapping lives only in the temporary copy;
   `packs/learned/` in the repository is untouched.
 
+**Demo beat 4 (learning loop): the script ends at "the cluster is gone and coverage rises".** Say this out loud,
+because a judge will expect a verdict to change:
+
+> "No verdict moves here, and that is correct. This line says the device keeps a local log file. That is a real
+> setting, now mapped, which is why coverage goes up. But none of our rules reads it, and none of the unanswered
+> lines on these devices maps onto a setting a rule reads. To make a verdict move we would have had to confirm a
+> wrong answer. The tool would let a human do that, and the human shouldn't."
+
+Re-checked 2026-10-07 after STIG 0.1.0 and `auth.aaa.servers` landed: still no truthful verdict-moving cluster.
+These Junos devices configure no authentication servers, and their syslog and NTP lines are already mapped. The
+transcript below predates those packs (junos@1.3.0, cisco_ios@1.0.0); re-run the script for current versions.
+
 ---
 
 Server: uvicorn on 127.0.0.1:64629, process 19184, started once for the whole transcript.

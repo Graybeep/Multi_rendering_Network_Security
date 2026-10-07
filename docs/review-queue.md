@@ -117,3 +117,50 @@ lines are the agent's argument, not approval.
       `system radius-server` / `tacplus-server`. No line means a mapped empty list. No fixture configures a server,
       so every device FAILs this rule today. That is a true finding on these configs, not a test of the mapping.
 - [ ] Source currency: the Juniper STIG used is V3R2 (Jan 2025); a newer release may exist. See the extract header.
+
+## Audit class: rule reads the wrong command for the control (3.2)
+
+The worst class this project has. A device hardened exactly as the control prescribes gets a **false FAIL**, and a
+false FAIL on a correctly hardened device is what destroys trust in an audit tool. It sits beside the two redaction
+classes above (wrong token, structural). Found by reading each STIG check text, never by inferring the command.
+For every rule, ask whether a second syntax satisfies the control.
+
+- [ ] `stig.password.min_length` (Cisco): the STIG checks `aaa common-criteria policy … min-length`; only
+      `security passwords min-length` was read. Fixed: `ios.password_min_length.cc_policy` (cisco_ios 1.1.0).
+- [ ] `stig.logging.two_servers` / `cis.logging.remote_host` (Cisco): `logging host <hostname>` and
+      `logging host ipv6 X` were not read. Fixed: `ios.logging.host.keyword` (cisco_ios 1.2.0). The bare form
+      `logging A.B.C.D` stays IPv4-only, because `logging <word>` is every other logging setting.
+- [ ] `stig.aaa.two_servers` (Cisco): servers defined only inside a group (`aaa group server radius G` /
+      ` server-private X`) and named servers with ` address ipv6 X` were not read. Fixed:
+      `ios.aaa.server.private`, and `ios.aaa.server.named` now takes ipv4 or ipv6 (1.2.0).
+- [ ] `stig.ntp.two_servers` (Cisco): `ntp server ipv6 X` recorded the server as the word `ipv6`. The count was
+      right by luck; the value was wrong. Fixed: `ip` / `ipv6` keyword skipped (1.2.0).
+- [ ] Swept, no gap found: Junos syslog (`system syslog host`), NTP (`system ntp server`), AAA (`system
+      radius-server`, `tacplus-server`), password length (`system login password minimum-length`). All read `\S+`
+      after the keyword, so hostnames and IPv6 are covered.
+- [ ] Swept, **left open, needs a decision:** Cisco `ntp peer X` is a time source too. Whether it counts as the
+      "secondary time source" the STIG asks for is an interpretation; not mapped. `stig.vty.idle_timeout` checks vty
+      lines only, so the console (`line con 0`) and HTTP management (`ip http timeout-policy idle`), both in the
+      Cisco check text, are not checked. That gap can only give a false PASS, never a false FAIL.
+
+## Decision: idle timeout across vendors (blocks `stig.vty.idle_timeout` on Junos)
+
+Junos sets idle time per login class (`system login class X idle-timeout N`, minutes); the model has it only per
+Cisco vty line (`mgmt.vty_lines[].exec_timeout`). Same class of problem as root vs `enable_secret` in 2.2: a
+Cisco-shaped field. Do not stretch `mgmt.vty_lines[]` to cover login classes.
+
+- [ ] Choose one (reviewer's lean: a):
+      **(a)** add `session.idle_timeout_sources[] {scope, value}`: one item per place a vendor sets an idle timeout
+      (a vty line, the console, a login class, HTTP management). The rule asserts over every source, with 0 as
+      "never". Additive, vendor-neutral, and the STIG rule passes or fails truthfully on both vendors. It also
+      closes the console and HTTP gap above.
+      **(b)** keep NOT_DETERMINED on Junos and list it under Known limits.
+      **(c)** a per-platform field. Rejected: it rebuilds the per-vendor coupling.
+      Not self-approved. `session.idle_timeout` (scalar, unmapped) stays as it is until this is decided.
+
+## Team task: CIS benchmark documents
+
+- [ ] Download the CIS Cisco IOS and Juniper Junos benchmarks (free with registration). Keep them out of the
+      repository; their text is not redistributable. Then cite each rule's control ID: every CIS rule has
+      `control: null` today, so no CIS finding traces to a benchmark item. It blocks nothing in code, but the
+      L1/L2 pair in PLAN 3.2 waits on it.
