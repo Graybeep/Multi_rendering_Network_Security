@@ -109,7 +109,9 @@ Cut from here first if you are behind.
 
 | # | Task | Owner | Priority |
 |---|---|---|---|
-| 3.1 | `brace_tree` reader (Junos hierarchical). Acceptance: produces an **identical** tree to `set_commands` for a config available in both forms. Flat and hierarchical are two encodings of one configuration; divergence is a bug in one reader | CC | High |
+| 3.1 | `brace_tree` reader (Junos hierarchical). Acceptance: produces an **identical** tree to `set_commands` for a config available in both forms. Flat and hierarchical are two encodings of one configuration; divergence is a bug in one reader. *Split 2026-10-07 into 3.1a and 3.1c; see note below* | CC | High |
+| 3.1a | **DONE.** `brace_tree` reader; parity on **generated** pairs (5 real flat configs, hierarchical form derived by the test): identical statements, canonical models and CIS verdicts; Batfish grammar snippets; redaction fixes for brace structure | CC | High |
+| 3.1c | **OPEN.** Parity against one **real captured pair**: `show configuration` and `show configuration \| display set`, same device, same commit. Blocker is sourcing, not code. Does not block Phase 3 | H + CC | High |
 | 3.1b | FortiOS reader + `fortios.yaml` (third vendor). FortiOS is block-nested by `config`/`end` and `edit`/`next`, not path-per-line, so `set_commands` does not cover it | CC | High |
 | 3.2 | NIST and STIG rule packs, 5 rules each, so the framework selector is real | H + CC | High |
 | 3.3 | Fleet statistics: compliance rate by severity and control, Pareto ranking, coverage % | CC | High — this is the statistical-analysis slide |
@@ -119,6 +121,23 @@ Cut from here first if you are behind.
 | 3.7 | `structured` reader + SONiC `config_db.json` | CC | Low |
 | 3.8 | LLM draft tier, shipped **off** by default | CC | Low |
 | 3.9 | Security pass: `safe_load` audit, `defusedxml`, regex timeouts, redaction tests, loopback-only check | CC | **Non-negotiable, do not cut** |
+
+**3.1 note — why 3.1a is not 3.1.** A generated pair tests one converter's
+self-consistency, not reader convergence: the test derives the hierarchical form, so a
+bug shared by the derivation and a reader passes. Only a captured pair closes 3.1.
+(3.1c, not 3.1b: 3.1b is the FortiOS reader and `ARCHITECTURE.md` refers to it.)
+
+Sourcing 3.1c, cheapest first:
+1. vSRX / vMX / vJunos-switch evaluation image in GNS3, containerlab or EVE-NG. Boot,
+   paste a config, capture both forms. Hours, not days, and it gives a live device for
+   other fixtures. Check Juniper's current evaluation terms first.
+2. Juniper vLabs or another free sandbox, if still offered.
+3. A team member with campus or internship lab access.
+4. Juniper Day One guides and KB articles that print one stanza both ways. Not a whole
+   config, but several real stanza pairs beat zero.
+
+The capture also settles the one known reader divergence (`set a b` beside
+`set a b c`; see `review-queue.md`, "Reader divergence").
 
 ---
 

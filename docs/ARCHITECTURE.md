@@ -181,6 +181,12 @@ State them before a judge finds them.
   over the collection of canonical models, run after the per-device pass.
 - **Rule translation is a single point of systematic error.** One mistranslated
   CIS control is wrong on every device, silently. Hence mandatory fixtures.
+- **Hierarchical Junos parity is shown on generated pairs, not a captured one.**
+  `brace_tree` and `set_commands` agree on five real configs whose hierarchical form
+  the test derives. No real config captured in both forms has been checked yet
+  (PLAN 3.1c). One divergence is known: a flat file stating both `set a b` and
+  `set a b c` keeps the prefix as its own statement and the brace form cannot. We
+  assume device output never prints both.
 - **Unsupported vendors start mostly `NOT_DETERMINED`** and climb as an
   administrator teaches the system. This is a trade, not a free lunch — and the
   loop needs an administrator who knows what the command means.

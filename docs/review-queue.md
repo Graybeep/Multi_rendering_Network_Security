@@ -50,3 +50,34 @@ Deliberately left `unknown` (default not certain): `tries-before-disconnect` (be
 - [ ] **Hand labels in `docs/ranking-eval.md`** (30 clusters, labelled by the agent). In particular, #20
       `line con 0 / exec-timeout 0 0` → `session.idle_timeout`, and #7/#9 `privilege level 15` → no v1 field.
 - [ ] Catalogue gap, team decision: a field for console/aux `privilege level` (automatic privileged shell).
+
+## Reader divergence — `brace_tree` vs `set_commands` (PLAN 3.1)
+
+- [ ] **Decide: normalise or keep.** A flat file holding both `set a b` and `set a b c` yields two statements; the brace
+      form of that configuration (`a { b { c; } }`) yields one, `a b c`. A mapping that matches the prefix alone
+      (`services ssh` → `services.ssh.enabled`) then sees different input, and a verdict depends on which encoding the
+      operator uploaded.
+      **Assumption carried until decided:** Junos `display set` prints only leaves, so device output never holds both
+      lines; only a hand-edited or concatenated flat file does. This is a claim about vendor output and has not been
+      checked against a captured pair (PLAN 3.1c). Pinned by
+      `test_documented_divergence_flat_prefix_statement_has_no_brace_equivalent`; documented in `brace_tree.py`.
+      Options: (a) `set_commands` drops a statement that is a strict prefix of another live one, (b) `brace_tree` emits
+      every block header as a statement too, (c) keep, and rely on the assumption.
+
+## Redaction findings — one list (2.2 audit, then 3.1)
+
+Two classes. A **wrong-token** finding masks a setting or leaves a secret in clear, and costs one field or one leak. A
+**structural** finding eats a delimiter and fails the whole file. Structural is worse; it is now caught as a class by
+`tests/test_redaction_structure.py` (every fixture, plus every secret keyword × every brace-form line shape).
+
+- [ ] Wrong token, 2.2 (`cf9c59e`, `be2a6b4`, `4d1b0fa`): password policy words (`minimum-length`, `format`,
+      `change-type`) masked as secrets; 10 leaks closed by matching constructs, not keywords.
+- [ ] Structural, 3.1: `key 0 {` (a key-chain block in brace-form Junos) masked to `key 0 ****`; any secret keyword
+      followed by `{` or `[` had the same fault. Fixed: a value never starts with `{` or `[`.
+- [ ] Wrong token, 3.1: a Junos encoding word on its own line under its keyword's block (`ascii-text "X";`) was left
+      in clear. Fixed for quoted values after `ascii-text` and `hexadecimal`.
+- [ ] Structural and leak, 3.1: `snmp community` took `\S+`. It ate `;` and `{`, and a quoted community with a space
+      (`"two words"`) was masked only up to the space, so the rest stayed in clear. Fixed: quoted value is one token;
+      a bare value stops at a delimiter.
+- [ ] Still not done, for 3.9: `snmp-server host` (IOS/NX-OS) still takes `\S+`; it has no brace form, so no
+      structural risk, but a quoted community there would leak the same way. No fixture has one.
