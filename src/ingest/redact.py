@@ -26,7 +26,10 @@ _FORM = r"(?:\s+(?:ascii-text|hexadecimal|ENC))?"  # encoding word, kept like th
 # Words that follow `password` in policy statements; they are settings, not secrets.
 _POLICY = r"(?!(?:minimum-|maximum-)|(?:change-type|format|encryption|strength-check)(?:\s|$))"
 # A quoted value is one secret even with spaces in it; otherwise the next whitespace-free token.
-_VALUE = r'(?P<val>"(?:[^"\\]|\\.)*"?|\S+)'
+# A `{` is never a value: brace-form Junos opens a block there (`key 0 {`), and masking it breaks the tree.
+_NOT_BRACE = r"(?!\{)"
+_QUOTED = r'"(?:[^"\\]|\\.)*"?'
+_VALUE = rf"(?P<val>{_QUOTED}|{_NOT_BRACE}\S+)"
 
 _CONSTRUCTS: tuple[re.Pattern[str], ...] = (
     # enable secret level 15 5 X · username u secret 8 X · password 7 X · neighbor n password 7 X
@@ -48,8 +51,12 @@ _CONSTRUCTS: tuple[re.Pattern[str], ...] = (
     re.compile(rf"(?P<head>{_B}message-digest-key\s+\d+\s+md5{_TYPE}\s+){_VALUE}"),
     # IOS crypto isakmp key [6] X address A
     re.compile(rf"(?P<head>{_B}crypto\s+isakmp\s+key{_TYPE}\s+)(?P<val>\S+)"),
-    # tacacs-server key 7 X · radius-server key X · Junos `key "X"` — `key X` as the final token pair
-    re.compile(rf"(?P<head>{_B}key{_TYPE}\s+)(?P<val>\S+)\s*$"),
+    # Junos encoding word on its own line, its keyword on the block header above: `pre-shared-key {` then
+    # `ascii-text "X";`. These words only ever precede a secret. Quoted values only, as Junos prints them.
+    re.compile(rf"(?P<head>{_B}(?:ascii-text|hexadecimal)\s+)(?P<val>{_QUOTED};?)"),
+    # tacacs-server key 7 X · radius-server key X · Junos `key "X"` — `key X` as the final token pair.
+    # Must stay last: redact_line skips it on a key-chain id line.
+    re.compile(rf"(?P<head>{_B}key{_TYPE}\s+)(?P<val>{_NOT_BRACE}\S+)\s*$"),
 )
 
 # A key chain's `key 1` names a key; the secret is on its key-string line.

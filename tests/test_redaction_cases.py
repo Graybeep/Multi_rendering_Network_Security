@@ -35,6 +35,8 @@ NOT_SECRETS = [
     "snmp-server community public RO",                      # well-known default, kept so a rule can flag it
     "set policy-options community as1_to_as2_community members 1:2",  # Junos BGP community, not SNMP
     "aaa authentication enable default enable",             # IOS method list
+    "            key 0 {",                                  # Junos brace form: key-chain key id opens a block
+    "        encrypted-password {",                         # a block header; `{` is never a secret
 ]
 
 # Lines with a secret. Expected output keeps the algorithm or encoding token, masks the secret.
@@ -68,6 +70,9 @@ SECRETS = [
     ('set snmp v3 usm local-engine user u1 privacy-aes128 privacy-password "PrivPass1"',  # Junos
      "set snmp v3 usm local-engine user u1 privacy-aes128 privacy-password ****"),
     ('set security ike policy p pre-shared-key ascii-text "$9$abc"', "set security ike policy p pre-shared-key ascii-text $9$****"),
+    ('                    ascii-text "$9$abc"; ## SECRET-DATA',  # Junos brace form, under `pre-shared-key {`
+     "                    ascii-text $9$****; ## SECRET-DATA"),
+    ('    hexadecimal "two words";', "    hexadecimal ****;"),                         # Junos brace form
     ("    set password ENC SH2abc==", "    set password ENC ****"),                   # FortiOS
     ("    set psksecret ENC xyz", "    set psksecret ENC ****"),                       # FortiOS
     ("    set passwd ENC xyz", "    set passwd ENC ****"),                             # FortiOS
