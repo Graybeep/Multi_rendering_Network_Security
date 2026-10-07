@@ -4,6 +4,10 @@ Scans live in memory for the life of the process. Uploaded config text is held i
 can be re-evaluated against newly installed packs; it is never written to disk and never logged.
 Packs hot-reload: every scan takes a fresh registry snapshot, so a pack dropped into the packs
 folder is used by the next scan or re-evaluation without a restart.
+
+The learning loop writes only `packs/learned/<vendor>.yaml`, and only after a human confirms. A
+confirmed mapping is validated with the same loader and fixture checks as a shipped pack before the
+file is replaced, so a bad answer is refused rather than half-applied.
 """
 
 from __future__ import annotations
@@ -11,7 +15,9 @@ from __future__ import annotations
 import hashlib
 import io
 import multiprocessing as mp
+import os
 import secrets
+import tempfile
 import threading
 import zipfile
 from dataclasses import dataclass, field
@@ -19,14 +25,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+import yaml
+from fastapi import Body, FastAPI, File, Form, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
 from src.batch import MAX_BYTES, Job, device_ids, error_row, run_batch
+from src.learning.author import AuthorError, append, author_mapping
+from src.learning.cluster import Cluster, build_clusters
+from src.learning.rank import rank
 from src.mapping.canonical import SCHEMA_PATH
-from src.registry import Registry
+from src.mapping.pack import load_vendor_pack, merge_learned
+from src.packs import PackError, read_yaml, validate_pack
+from src.registry import Registry, check_fixtures
 from src.report.pdf import render_pdf
 from src.versions import release
 
@@ -38,6 +50,7 @@ MAX_DEVICES = 1000
 MAX_SCANS = 50  # oldest finished scans are dropped beyond this
 # The Vite dev and preview servers. Loopback origins only.
 ALLOWED_ORIGINS = [f"http://{h}:{p}" for h in ("127.0.0.1", "localhost") for p in (5173, 4173)]
+_CONFIRM_KEYS = {"canonical_field", "absent", "default", "default_os_version", "value", "author"}
 _SUMMARY_KEYS = ("device_id", "filename", "status", "error", "vendor_pack", "detection_ambiguous",
                  "identity", "verdicts", "coverage")
 
@@ -275,21 +288,88 @@ def create_app(packs: Path = DEFAULT_PACKS, workers: int | None = None, timeout:
     def list_packs() -> dict[str, Any]:
         return {"packs": registry.snapshot().packs()}
 
-    def _not_built(what: str) -> None:
-        raise ApiError(501, "not_implemented", f"{what} arrives with the learning loop (PLAN 2.3-2.6)")
+    clusters: dict[str, Cluster] = {}  # latest occurrence data per cluster id, across scans
+    learn_lock = threading.Lock()  # one learned-pack write at a time
 
     @app.get("/api/scans/{scan_id}/clusters")
-    def list_clusters(scan_id: str) -> None:
-        _scan(scan_id)
-        _not_built("clustering of unrecognised lines")
+    def list_clusters(scan_id: str) -> dict[str, Any]:
+        scan = _scan(scan_id)
+        with scan.lock:
+            results = [d.result for d in scan.devices if d.status == "done" and d.result is not None]
+        found = build_clusters(results, registry.catalogue)
+        with learn_lock:
+            clusters.update((c.cluster_id, c) for c in found)
+        return {"scan_id": scan.scan_id, "clusters": [c.view() for c in found]}
+
+    def _cluster(cluster_id: str) -> Cluster:
+        with learn_lock:
+            cluster = clusters.get(cluster_id)
+        if cluster is None:
+            raise ApiError(404, "not_found", f"no cluster {cluster_id!r}; list a scan's clusters first")
+        return cluster
 
     @app.get("/api/clusters/{cluster_id}/suggestions")
-    def cluster_suggestions(cluster_id: str) -> None:
-        _not_built("ranked suggestions")
+    def cluster_suggestions(cluster_id: str) -> dict[str, Any]:
+        return {"cluster_id": cluster_id, "candidates": rank(_cluster(cluster_id), registry.catalogue)}
 
     @app.post("/api/clusters/{cluster_id}/confirm")
-    def confirm_cluster(cluster_id: str) -> None:
-        _not_built("confirming a mapping")
+    def confirm_cluster(cluster_id: str, body: Annotated[Any, Body()], dry_run: bool = False) -> dict[str, Any]:
+        cluster = _cluster(cluster_id)
+        request = _confirm_request(body)
+        vendor_path = registry.root / "vendors" / f"{cluster.vendor}.yaml"
+        if not vendor_path.exists():
+            raise ApiError(409, "pack_missing", f"vendor pack {cluster.vendor!r} is no longer installed")
+        learned_path = registry.root / "learned" / f"{cluster.vendor}.yaml"
+        created = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+        with learn_lock:
+            try:
+                mapping = author_mapping(cluster, request, registry.catalogue, created)
+            except AuthorError as exc:
+                raise ApiError(exc.status, "not_learnable", str(exc), exc.field) from exc
+            current = read_yaml(learned_path) if learned_path.exists() else None
+            doc, fragment = append(current, cluster.vendor, mapping)
+            text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=1_000_000)
+            _validate_learned(vendor_path, learned_path.name, text)
+            if not dry_run:
+                learned_path.parent.mkdir(exist_ok=True)
+                fd, tmp = tempfile.mkstemp(dir=learned_path.parent, prefix=".", suffix=".tmp")
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    fh.write(text)
+                os.replace(tmp, learned_path)  # atomic: the registry never sees half a file
+                registry.snapshot()  # reload now, so the next scan or re-evaluation uses it
+        return {"written": not dry_run, "pack_path": f"{registry.root.name}/learned/{learned_path.name}",
+                "pack_version": doc["version"], "mapping_id": mapping["id"], "fragment_yaml": fragment}
+
+    def _confirm_request(body: Any) -> dict[str, Any]:
+        if not isinstance(body, dict):
+            raise ApiError(422, "unprocessable", "body must be a JSON object")
+        extra = sorted(set(body) - _CONFIRM_KEYS)
+        if extra:
+            raise ApiError(422, "unprocessable", f"unknown field(s) {extra}", extra[0])
+        if not isinstance(body.get("canonical_field"), str):
+            raise ApiError(422, "unprocessable", "canonical_field is required", "canonical_field")
+        if body.get("absent") not in ("unknown", "default"):
+            raise ApiError(422, "unprocessable", "absent must be 'unknown' or 'default'", "absent")
+        for name in ("author", "default_os_version"):
+            if body.get(name) is not None and not isinstance(body[name], str):
+                raise ApiError(422, "unprocessable", f"{name} must be a string", name)
+        return body
+
+    def _validate_learned(vendor_path: Path, name: str, text: str) -> None:
+        """The learned pack as it would be written must load beside its vendor pack, fixtures and all."""
+        try:
+            validate_pack(yaml.safe_load(text), "learned_pack", name)
+        except PackError as exc:
+            raise ApiError(422, "unprocessable", str(exc)) from exc
+        with tempfile.TemporaryDirectory() as tmp:
+            candidate = Path(tmp) / name
+            candidate.write_text(text, encoding="utf-8")
+            try:
+                merged = merge_learned(load_vendor_pack(vendor_path, registry.catalogue), candidate,
+                                       registry.catalogue)
+                check_fixtures(merged, registry.catalogue)
+            except PackError as exc:
+                raise ApiError(409, "conflict", str(exc)) from exc
 
     return app
 

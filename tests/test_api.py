@@ -140,9 +140,10 @@ def test_unknown_scan_is_404(client: TestClient) -> None:
 
 @pytest.mark.parametrize("method, path", [("get", "/api/clusters/c1/suggestions"),
                                           ("post", "/api/clusters/c1/confirm")])
-def test_learning_endpoints_say_not_implemented_never_fake_data(client: TestClient, method: str, path: str) -> None:
-    r = getattr(client, method)(path)
-    assert r.status_code == 501
+def test_unknown_cluster_is_404(client: TestClient, method: str, path: str) -> None:
+    kwargs = {"json": {"canonical_field": "ntp.servers[]", "absent": "unknown"}} if method == "post" else {}
+    r = getattr(client, method)(path, **kwargs)
+    assert r.status_code == 404
     _valid(r.json(), "Error")
 
 

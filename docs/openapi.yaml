@@ -127,6 +127,11 @@ paths:
       tags: [training]
       operationId: listClusters
       summary: Unrecognised-line clusters for a scan, sorted by device count descending
+      description: |
+        Built from the devices that have finished, so it can be polled while a scan runs. Block
+        headers (`router bgp 65000`) are not questions; they appear as a cluster's `scope`. A device
+        with no vendor pack raises no questions, since there is no pack to extend. Cluster ids are
+        stable: the same pattern under the same pack has the same id in every scan.
       parameters: [{$ref: '#/components/parameters/ScanId'}]
       responses:
         '200':
@@ -143,7 +148,6 @@ paths:
                     description: Sorted by `device_count` descending.
                     items: {$ref: '#/components/schemas/Cluster'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '501': {$ref: '#/components/responses/NotImplemented'}
 
   /api/clusters/{cluster_id}/suggestions:
     get:
@@ -153,6 +157,8 @@ paths:
       description: |
         Candidates pre-fill a form. They are never applied automatically. The
         administrator may pick any field from `/api/schema/fields` instead.
+        Only fields a learned line can fill are offered. `candidates` may be empty when no field
+        description shares a word with the line; the administrator then picks from the field list.
       parameters: [{$ref: '#/components/parameters/ClusterId'}]
       responses:
         '200':
@@ -160,8 +166,11 @@ paths:
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Suggestions'}
-        '404': {$ref: '#/components/responses/NotFound'}
-        '501': {$ref: '#/components/responses/NotImplemented'}
+        '404':
+          description: Unknown cluster id. Ids are learned by listing a scan's clusters since the server started.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
 
   /api/clusters/{cluster_id}/confirm:
     post:
@@ -172,7 +181,12 @@ paths:
         With `dry_run=true` nothing is written and the response shows the exact
         pack fragment that would be written, for the "show before writing" step.
         Without it, the fragment is appended to `packs/learned/<vendor>.yaml`,
-        the registry reloads and the parse cache is invalidated.
+        the registry reloads and the parse cache is invalidated. Re-run with
+        `POST /api/scans/{id}/reevaluate` to see the answer applied.
+
+        The mapping is checked before anything is written: it must match every
+        occurrence in the cluster, and the learned pack must load beside its vendor
+        pack with every fixture passing. A refused answer writes nothing.
       parameters:
         - {$ref: '#/components/parameters/ClusterId'}
         - name: dry_run
@@ -191,9 +205,10 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/ConfirmResult'}
         '404': {$ref: '#/components/responses/NotFound'}
-        '501': {$ref: '#/components/responses/NotImplemented'}
         '409':
-          description: Mapping would overlap an existing mapping ambiguously; nothing written
+          description: |
+            Nothing written. The mapping would overlap or contradict an existing one (including the
+            same cluster confirmed twice), or the vendor pack is no longer installed. `message` says which.
           content:
             application/json:
               schema: {$ref: '#/components/schemas/Error'}
@@ -286,11 +301,6 @@ components:
           schema: {$ref: '#/components/schemas/Error'}
     TooLarge:
       description: Upload exceeds the size limit
-      content:
-        application/json:
-          schema: {$ref: '#/components/schemas/Error'}
-    NotImplemented:
-      description: The learning loop (PLAN 2.3-2.6) is not built yet. Never returns placeholder data.
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
@@ -516,7 +526,10 @@ components:
         vendor: {type: string, description: Vendor pack id the lines were read under}
         signature:
           type: string
-          description: Normalised template with typed placeholders, e.g. <INT>, <IPV4>, <IFACE>.
+          description: |
+            Normalised template with typed placeholders: <INT>, <IPV4>, <PREFIX>, <IPV6>, <MAC>,
+            <STR> (quoted string), <IFACE>, <DOMAIN>, and <NAME> (a name the device gave its own
+            hostname, user, list or line).
         sample_line:
           type: string
           description: One redacted raw line from the cluster.
@@ -559,9 +572,20 @@ components:
           enum: [unknown, default]
           description: What a device means when the line is missing.
         default:
-          description: Required when absent is "default". Must match the canonical field's type.
+          description: |
+            Required when absent is "default" on a single-value field. Must match the canonical
+            field's type. A list field takes none: absent "default" there means no line is an empty list.
+        default_os_version:
+          type: [string, 'null']
+          examples: ['>=12.0']
+          description: |
+            Required with a default: the OS releases the default holds for. Defaults change
+            between releases, so a default is never recorded without one.
         value:
-          description: Fixed value to assign when the line matches and carries no capture (e.g. a bare flag line).
+          description: |
+            Fixed value to assign when the line matches (e.g. a bare flag line). Required for a
+            true/false field, and when the line carries more than one value that could fill the
+            field; otherwise the one placeholder of the right type is read.
         author:
           type: [string, 'null']
           description: Who confirmed the mapping; recorded as provenance.
