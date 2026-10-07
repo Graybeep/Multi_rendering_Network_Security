@@ -101,6 +101,13 @@ exists to avoid.
 running and a Junos config goes from mostly-NOT_DETERMINED to audited. That is the
 demo.
 
+*Demonstrated 2026-10-07 against a live server, with no restart:* `docs/demos/phase2-gates.md`,
+reproducible with `scripts/demo_phase2_gates.py`.
+- **2.2:** the SRX configs go from 15 NOT_DETERMINED to 9 of 15 decided. as1border1/2 stay at 12
+  NOT_DETERMINED, because they state no OS version and the demo supplies none.
+- **2.6:** confirm writes the learned pack, the cluster leaves the queue, coverage rises, and a fresh
+  scan is identical. No verdict moved; no current cluster maps truthfully onto a field a CIS rule reads.
+
 ---
 
 ## Phase 3 — Fill out and harden (Days 13–17)
