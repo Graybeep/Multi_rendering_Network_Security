@@ -95,7 +95,7 @@ Junos FAILs now carry remediation; every fix ends in `commit confirmed 5`.
 
 **Landed:** the three training endpoints are real, and none of them returns 501 any more. `GET /api/scans/{id}/clusters` groups unrecognised
 lines across the scan (13 real IOS configs: about 1,000 lines become about 160 questions, most-shared first). `GET /api/clusters/{id}/suggestions`
-ranks canonical fields lexically (right field in the top 3 for 54 of the 57 shipped mappings). `POST /api/clusters/{id}/confirm` writes
+ranks canonical fields lexically (right field in the top 3 for 54 of the 57 shipped mappings; that is a regression check on fixture lines, not accuracy: see `docs/ranking-eval.md`). `POST /api/clusters/{id}/confirm` writes
 `packs/learned/<vendor>.yaml`, and after `POST /api/scans/{id}/reevaluate` the cluster is gone and the field is mapped. No restart is needed.
 **Not landed:** embedding and LLM tiers (`tier` is always `lexical`); an "ignore this line" answer (routing noise such as
 `boot-start-marker` and `end` stays in the queue).
@@ -111,3 +111,28 @@ ranks canonical fields lexically (right field in the top 3 for 54 of the 57 ship
 **Unblocked for you:** PLAN 2.7 against the real backend: queue → suggestions → `dry_run=true` preview of `fragment_yaml` → confirm →
 reevaluate. Real data to try: scan `fixtures/configs/batfish_example_live`. Questions such as `line con <INT> :: exec-timeout <INT> <INT>`
 are real. That one returns 422 for `session.idle_timeout` on purpose, because it holds minutes and seconds.
+
+---
+
+## 2026-10-07 · "Not a security setting" (ignore)
+
+**Your uncommitted `web/` changes are blocking your own PLAN 2.7 start.** Nine modified files and four new test files
+in `web/` have sat uncommitted since the learning-loop handoff. Commit or discard them before building on the API
+below.
+
+**Landed:** `POST /api/clusters/{id}/ignore` with body `IgnoreRequest {reason (required), author?}` and `?dry_run=true`.
+The response is `ConfirmResult`, and `mapping_id` is the ignore entry's id. After `POST /api/scans/{id}/reevaluate`
+the cluster is gone, and **no verdict changes**: an ignore writes no field.
+**UI contract (please hold to it):**
+- "Not a security setting" is a **third button** beside confirming a field, not a variant of confirm.
+- It is never the default and never pre-selected, whatever the suggestion scores are, including when `candidates`
+  is empty.
+- `reason` is a required free-text box, **empty** when the form opens. Never pre-fill it. A 422 with
+  `field: "reason"` means it was blank.
+- A 409 means a pack mapping matches the line but cannot read it, so the line may hold a setting. Show `message`
+  verbatim. It tells the administrator that mapping needs extending.
+- Show the `dry_run` preview before writing, as for confirm.
+**Also:** `/api/packs` `mapping_count` for a learned pack now counts ignore entries too. Regenerate your client from
+`docs/openapi.yaml` (new path and new `IgnoreRequest` schema; nothing removed or renamed).
+**Expect most questions to be ignores.** In a random 30 of the 160 real IOS questions, 29 have no v1 field
+(`docs/ranking-eval.md`). Low suggestion scores are the normal case, not an error state.

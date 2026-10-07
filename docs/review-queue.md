@@ -37,3 +37,16 @@ Deliberately left `unknown` (default not certain): `tries-before-disconnect` (be
 - [ ] Ranking weights: 0.6 × TF-IDF cosine + 0.4 × token overlap, halved when an integer field meets a line with no integer. Field
       path words count twice. Known misses: `ios.logging.trap`, `ios.ssh.auth_retries`, `junos.ssh.version`.
 - [ ] A confirmation with no `author` is recorded as `author: unattributed`.
+
+## Ignore entries and the ranking measurement (2026-10-07)
+
+- [ ] Ignore scope is per vendor and permanent (a learned-pack entry). There is no per-scan or per-device ignore.
+- [ ] An ignore applies only when no mapping matches the line. A line a mapping matches but cannot read (a capture
+      missing from `map:`) is refused with 409, because the mapping needs extending.
+- [ ] Ignores apply to leaf lines only, never to a block header.
+- [ ] `reason` needs at least 2 non-space characters. Nothing checks what it says.
+- [ ] Two descriptions reworded so the config's own words appear: `logging.level` (trap level, informational) and
+      `services.ssh.max_auth_tries` (authentication retries). `services.ssh.version` now says "SSH". No field renamed.
+- [ ] **Hand labels in `docs/ranking-eval.md`** (30 clusters, labelled by the agent). In particular, #20
+      `line con 0 / exec-timeout 0 0` → `session.idle_timeout`, and #7/#9 `privilege level 15` → no v1 field.
+- [ ] Catalogue gap, team decision: a field for console/aux `privilege level` (automatic privileged shell).

@@ -13,7 +13,8 @@ SIH 2026 · problem statement 26155 · team Wi-fight.
 > Status: early build. Cisco IOS and Junos (`set` form) audit end to end against the CIS
 > pack, from the CLI or the local HTTP API. Unrecognised lines are clustered across a
 > batch, ranked against the canonical field descriptions, and a confirmed answer is written
-> to `packs/learned/<vendor>.yaml` (API only). The FortiOS and NX-OS packs and the
+> to `packs/learned/<vendor>.yaml` (API only). A line can also be answered "not a security
+> setting", which takes it out of the queue and changes no verdict. The FortiOS and NX-OS packs and the
 > embedding and LLM suggestion tiers are not built yet.
 
 ## Requirements
