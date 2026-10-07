@@ -32,9 +32,14 @@ Without `make` (common on Windows):
 
 ```sh
 python -m venv .venv
-.venv\Scripts\pip install -e ".[dev]"     # Windows
-.venv/bin/pip install -e ".[dev]"         # macOS / Linux
+.venv\Scriptsctivate                    # Windows
+source .venv/bin/activate                 # macOS / Linux
+pip install -r requirements.lock          # exact versions the tests ran against
+pip install --no-deps -e .
 ```
+
+`requirements.lock` pins every package. `make lock` re-resolves it from `pyproject.toml`.
+The commands under "Without make" below assume the venv is active.
 
 ## Audit some configs
 

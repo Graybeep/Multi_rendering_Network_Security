@@ -17,6 +17,6 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install -e ".[dev]"
+      - run: pip install -r requirements.lock && pip install --no-deps -e .
       - run: make test
       - run: make lint
