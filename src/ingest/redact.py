@@ -26,10 +26,11 @@ _FORM = r"(?:\s+(?:ascii-text|hexadecimal|ENC))?"  # encoding word, kept like th
 # Words that follow `password` in policy statements; they are settings, not secrets.
 _POLICY = r"(?!(?:minimum-|maximum-)|(?:change-type|format|encryption|strength-check)(?:\s|$))"
 # A quoted value is one secret even with spaces in it; otherwise the next whitespace-free token.
-# A `{` is never a value: brace-form Junos opens a block there (`key 0 {`), and masking it breaks the tree.
-_NOT_BRACE = r"(?!\{)"
+# A `{` or `[` is never a value: brace-form Junos opens a block or a list there (`key 0 {`), and masking it
+# breaks the tree. tests/test_redaction_structure.py holds the invariant.
+_NOT_DELIM = r"(?![{\[])"
 _QUOTED = r'"(?:[^"\\]|\\.)*"?'
-_VALUE = rf"(?P<val>{_QUOTED}|{_NOT_BRACE}\S+)"
+_VALUE = rf"(?P<val>{_QUOTED}|{_NOT_DELIM}\S+)"
 
 _CONSTRUCTS: tuple[re.Pattern[str], ...] = (
     # enable secret level 15 5 X · username u secret 8 X · password 7 X · neighbor n password 7 X
@@ -56,15 +57,17 @@ _CONSTRUCTS: tuple[re.Pattern[str], ...] = (
     re.compile(rf"(?P<head>{_B}(?:ascii-text|hexadecimal)\s+)(?P<val>{_QUOTED};?)"),
     # tacacs-server key 7 X · radius-server key X · Junos `key "X"` — `key X` as the final token pair.
     # Must stay last: redact_line skips it on a key-chain id line.
-    re.compile(rf"(?P<head>{_B}key{_TYPE}\s+)(?P<val>{_NOT_BRACE}\S+)\s*$"),
+    re.compile(rf"(?P<head>{_B}key{_TYPE}\s+)(?P<val>{_NOT_DELIM}\S+)\s*$"),
 )
 
 # A key chain's `key 1` names a key; the secret is on its key-string line.
 _KEY_ID_LINE = re.compile(r"^\s*key\s+\d+\s*$")
 
-# SNMP community strings, in each place they appear. The verb prefix covers flat `set` syntax.
+# SNMP community strings, in each place they appear. The verb prefix covers flat `set` syntax. A quoted community
+# is one value; a bare one stops before a delimiter, so `snmp community X;` keeps its `;` and `{` is never masked.
 _SNMP_COMMUNITY = re.compile(
-    r"^(?P<head>\s*(?:(?:set|delete|deactivate|activate)\s+)?snmp(?:-server)?\s+community\s+)(?P<val>\S+)")
+    rf"^(?P<head>\s*(?:(?:set|delete|deactivate|activate)\s+)?snmp(?:-server)?\s+community\s+)"
+    rf"(?P<val>{_QUOTED}|[^\s;{{}}\[\]]+)")
 # Brace-form Junos states the community alone on its line, inside `snmp { ... }`: `community X {` or
 # `community X;`. Policy communities (`community NAME members ...`) carry more words and are not matched.
 _BRACE_COMMUNITY = re.compile(r'^(?P<head>\s*community\s+)(?P<val>"(?:[^"\\]|\\.)*"|[^\s;{]+)(?=\s*[{;]\s*$)')

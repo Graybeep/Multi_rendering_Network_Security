@@ -65,6 +65,8 @@ SECRETS = [
     ('set protocols bgp group g authentication-key "$9$abc"', "set protocols bgp group g authentication-key $9$****"),
     ('set system radius-server 10.0.0.1 secret "two words"', "set system radius-server 10.0.0.1 secret ****"),
     ('set snmp community s3cr3t authorization read-only', "set snmp community **** authorization read-only"),
+    ('set snmp community "two words" authorization read-only',  # Junos: quoted community used to leak its 2nd word
+     "set snmp community **** authorization read-only"),
     ('set snmp v3 usm local-engine user u1 authentication-sha authentication-password "AuthPass1"',  # Junos
      "set snmp v3 usm local-engine user u1 authentication-sha authentication-password ****"),
     ('set snmp v3 usm local-engine user u1 privacy-aes128 privacy-password "PrivPass1"',  # Junos
