@@ -89,3 +89,12 @@ def test_not_a_secret_is_left_alone(line: str) -> None:
 @pytest.mark.parametrize("line, expected", SECRETS)
 def test_secret_is_masked_and_keeps_its_algorithm(line: str, expected: str) -> None:
     assert redact_line(line) == expected
+
+
+@pytest.mark.xfail(strict=True, reason=r"KNOWN LEAK, PLAN 3.9: _SNMP_HOST takes \S+, so a quoted community is masked "
+                   "only to its first space. See docs/review-queue.md, 'Redaction findings'. strict: fixing it fails "
+                   "this marker, so the xfail cannot outlive the leak.")
+def test_snmp_host_quoted_community_is_masked_whole() -> None:
+    # IOS/NX-OS. Whether IOS accepts a quoted community with a space is unverified; the redactor must not
+    # depend on that, because it runs before detection on any vendor's text.
+    assert redact_line('snmp-server host 10.0.0.9 version 2c "two words"') == "snmp-server host 10.0.0.9 version 2c ****"

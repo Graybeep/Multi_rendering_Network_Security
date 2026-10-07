@@ -80,4 +80,5 @@ Two classes. A **wrong-token** finding masks a setting or leaves a secret in cle
       (`"two words"`) was masked only up to the space, so the rest stayed in clear. Fixed: quoted value is one token;
       a bare value stops at a delimiter.
 - [ ] Still not done, for 3.9: `snmp-server host` (IOS/NX-OS) still takes `\S+`; it has no brace form, so no
-      structural risk, but a quoted community there would leak the same way. No fixture has one.
+      structural risk, but a quoted community there leaks the same way (`"two words"` → `**** words"`). Pinned by
+      `test_snmp_host_quoted_community_is_masked_whole`, a strict xfail: the fix flips it and must remove the marker.
