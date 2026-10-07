@@ -1,9 +1,12 @@
-# Juniper Junos, flat `set` form (`show configuration | display set`). Vendor knowledge lives here, not in code.
-# Maps to the SAME canonical fields as cisco_ios.yaml, so every rule pack runs on Junos unchanged.
+# Juniper Junos, in either encoding: hierarchical (`show configuration`) or flat (`| display set`).
+# Vendor knowledge lives here, not in code. Maps to the SAME canonical fields as cisco_ios.yaml, so every
+# rule pack runs on Junos unchanged.
 #
-# Statements arrive from the set_commands reader as full paths without the verb:
-#   set system services ssh protocol-version v2  →  "system services ssh protocol-version v2"
-# so collection keys are named groups in `match`, never `scope`.
+# The brace_tree reader flattens both encodings to the same statements, full paths without the verb:
+#   set system services ssh protocol-version v2            →  "system services ssh protocol-version v2"
+#   system { services { ssh { protocol-version v2; } } }   →  the same
+# so collection keys are named groups in `match`, never `scope`. `detect` and `facts` are written against
+# the flat display form (`^set system host-name `) and also match a hierarchical file, at its own line.
 #
 # Scope of this pack: settings every Junos platform shares (system, snmp, interfaces).
 # SRX-only areas (security zones, policies, NAT) must not be added here without a platform scope:
@@ -12,10 +15,10 @@
 # REVIEW(H): every `absent: default` below states Junos behaviour from 12.1 onwards and needs a human
 # sign-off. Where the default was not certain the field is `absent: unknown` and says why.
 id: junos
-version: 1.2.0
+version: 1.3.0
 vendor: juniper
 os_family: junos
-reader: set_commands
+reader: brace_tree
 min_score: 2
 detect:
   - {pattern: '^set version \d+\.\d+[A-Z]', weight: 2}       # 15.1X49-D15.4, 18.4R2

@@ -143,9 +143,11 @@ The operator can supply an OS version (`scan --os-version`). It is used only whe
 the config states none, and it is recorded with `evidence.source: operator`. The
 engine never infers a version from syntax.
 
-Flat-syntax packs (`reader: set_commands`) see the whole path in each statement, so
-collection keys are named groups in `match`, and `scope` is not used. Fixtures are
-written with the `set` verb, as the device prints them.
+Flat-syntax packs (`reader: set_commands` or `brace_tree`) see the whole path in each
+statement, so collection keys are named groups in `match`, and `scope` is not used.
+Fixtures are written with the `set` verb, as the device prints them. `brace_tree` reads
+both the hierarchical and the `display set` encoding to identical statements, and its
+`detect` and `facts` patterns are written once, against the `set` display form.
 
 Detection signatures must be anchored and weighted. `^switchname` discriminates;
 `^hostname` does not. Two packs tying is an explicit ambiguous state, never

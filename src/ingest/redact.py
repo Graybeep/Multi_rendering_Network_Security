@@ -58,6 +58,9 @@ _KEY_ID_LINE = re.compile(r"^\s*key\s+\d+\s*$")
 # SNMP community strings, in each place they appear. The verb prefix covers flat `set` syntax.
 _SNMP_COMMUNITY = re.compile(
     r"^(?P<head>\s*(?:(?:set|delete|deactivate|activate)\s+)?snmp(?:-server)?\s+community\s+)(?P<val>\S+)")
+# Brace-form Junos states the community alone on its line, inside `snmp { ... }`: `community X {` or
+# `community X;`. Policy communities (`community NAME members ...`) carry more words and are not matched.
+_BRACE_COMMUNITY = re.compile(r'^(?P<head>\s*community\s+)(?P<val>"(?:[^"\\]|\\.)*"|[^\s;{]+)(?=\s*[{;]\s*$)')
 _SNMP_HOST = re.compile(  # snmp-server host H [vrf V] [informs|traps] [version 1|2c|3 auth|noauth|priv] C
     r"^(?P<head>\s*snmp-server\s+host\s+\S+(?:\s+vrf\s+\S+)?(?:\s+(?:informs|traps))?"
     r"(?:\s+version\s+(?:1|2c|3\s+(?:auth|noauth|priv)))?\s+)(?P<val>\S+)")
@@ -71,8 +74,9 @@ _SNMP_USER_SECRETS = (  # auth <algorithm> X · priv [des|3des|aes N|aes-128] X
 def _mask(value: str) -> str:
     if value == MASK or value.endswith(f"${MASK}"):
         return value  # already masked by an earlier construct
-    # A brace-form statement ends in `;`; keep it so the tree still parses after masking.
-    end = ";" if value.endswith(";") and not value.startswith('"') else ""
+    # A brace-form statement ends in `;`; keep it so the tree still parses after masking. Inside an
+    # unterminated quote the `;` belongs to the string; after a closed one (`"X";`) it ends the statement.
+    end = ";" if value.endswith(";") and (not value.startswith('"') or value.endswith('";')) else ""
     prefix = _CRYPT_PREFIX.match(value)
     return (f"{prefix.group(1)}{MASK}" if prefix else MASK) + end
 
@@ -93,6 +97,7 @@ def redact_line(line: str) -> str:
             continue
         out = _sub(pattern, out)
     out = _SNMP_COMMUNITY.sub(_community, out)
+    out = _BRACE_COMMUNITY.sub(_community, out)
     out = _SNMP_HOST.sub(_community, out)
     if _SNMP_USER.match(out):
         for pattern in _SNMP_USER_SECRETS:

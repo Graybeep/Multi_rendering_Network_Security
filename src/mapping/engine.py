@@ -10,6 +10,7 @@ from typing import Any
 
 from src.mapping.canonical import Catalogue, Model, Triple, parse_path
 from src.mapping.pack import Mapping, VendorPack
+from src.readers import pattern_lines
 from src.readers.node import Node
 from src.versions import in_range
 
@@ -92,10 +93,13 @@ def _ignored_by(pack: VendorPack, node: Node, parent: Node | None, warnings: lis
 def detect(lines: list[str], packs: list[VendorPack]) -> Detection:
     """Weighted anchored signatures. A tie for the top score is ambiguous, never first-match-wins."""
     scored: list[tuple[int, VendorPack, int | None]] = []
+    views: dict[str, list[str]] = {}
     for pack in packs:
+        if pack.reader not in views:
+            views[pack.reader] = pattern_lines(pack.reader, lines)
         score, first_line = 0, None
         for pattern, weight in pack.detect:
-            for i, line in enumerate(lines):
+            for i, line in enumerate(views[pack.reader]):
                 try:
                     hit = pattern.match(line)
                 except TimeoutError:
@@ -345,8 +349,9 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
     for name, value in (("vendor", pack.vendor), ("os_family", pack.os_family)):
         if detect_line is not None:
             device[name] = _mapped(value, detect_line, f"{pack.id}.detect", pack.tag)
+    view = pattern_lines(pack.reader, lines, nodes)
     for name, (pattern, group) in pack.facts.items():
-        for i, line in enumerate(lines):
+        for i, line in enumerate(view):
             try:
                 hit = pattern.match(line.strip())
             except TimeoutError:
