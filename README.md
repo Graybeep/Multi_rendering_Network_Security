@@ -11,8 +11,10 @@ new pack file, not a code change or a redeploy.
 SIH 2026 · problem statement 26155 · team Wi-fight.
 
 > Status: early build. Cisco IOS and Junos (`set` form) audit end to end against the CIS
-> pack, from the CLI or the local HTTP API. The learning loop (unrecognised-line
-> clusters, suggestions) and the FortiOS and NX-OS packs are not built yet.
+> pack, from the CLI or the local HTTP API. Unrecognised lines are clustered across a
+> batch, ranked against the canonical field descriptions, and a confirmed answer is written
+> to `packs/learned/<vendor>.yaml` (API only). The FortiOS and NX-OS packs and the
+> embedding and LLM suggestion tiers are not built yet.
 
 ## Requirements
 

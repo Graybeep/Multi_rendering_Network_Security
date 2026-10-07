@@ -88,3 +88,26 @@ Junos FAILs now carry remediation; every fix ends in `commit confirmed 5`.
 **Not landed:** the learning loop (clusters, suggestions, confirm), so the training screen stays on the mock.
 **Unblocked for you:** upload, progress, findings, PDF and packs screens against the real backend; the 2.2 gate
 (drop `junos.yaml` in, re-evaluate, no restart) works through `POST /api/scans/{id}/reevaluate`.
+
+---
+
+## 2026-10-07 · Learning loop (PLAN 2.3–2.6)
+
+**Landed:** the three training endpoints are real, and none of them returns 501 any more. `GET /api/scans/{id}/clusters` groups unrecognised
+lines across the scan (13 real IOS configs: about 1,000 lines become about 160 questions, most-shared first). `GET /api/clusters/{id}/suggestions`
+ranks canonical fields lexically (right field in the top 3 for 54 of the 57 shipped mappings). `POST /api/clusters/{id}/confirm` writes
+`packs/learned/<vendor>.yaml`, and after `POST /api/scans/{id}/reevaluate` the cluster is gone and the field is mapped. No restart is needed.
+**Not landed:** embedding and LLM tiers (`tier` is always `lexical`); an "ignore this line" answer (routing noise such as
+`boot-start-marker` and `end` stays in the queue).
+**Contract changes in `docs/openapi.yaml`. Regenerate your client:**
+- `501` removed from the three training endpoints, and the `NotImplemented` response component removed.
+- `ConfirmRequest.default_os_version` (new, additive). It is required whenever `absent: "default"` is sent for a single-value field.
+- A refused answer is `422` with `field` naming what to fix (`value`, `default`, `default_os_version`, `canonical_field`), or `409` when
+  it contradicts an existing mapping or the cluster was already confirmed. Either way nothing is written. Show `message` verbatim:
+  it tells the administrator what to state (e.g. "the line carries several values … state a fixed value").
+- A true/false field always needs `value` in the request. The form should ask for it rather than default it.
+- Cluster ids are stable across scans. A suggestions or confirm call for an id not listed since the server started is `404`.
+- `Cluster.signature` placeholders: `<INT> <IPV4> <PREFIX> <IPV6> <MAC> <STR> <IFACE> <DOMAIN> <NAME>`.
+**Unblocked for you:** PLAN 2.7 against the real backend: queue → suggestions → `dry_run=true` preview of `fragment_yaml` → confirm →
+reevaluate. Real data to try: scan `fixtures/configs/batfish_example_live`. Questions such as `line con <INT> :: exec-timeout <INT> <INT>`
+are real. That one returns 422 for `session.idle_timeout` on purpose, because it holds minutes and seconds.

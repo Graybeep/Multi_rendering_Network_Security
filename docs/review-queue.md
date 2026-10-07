@@ -23,3 +23,17 @@ Deliberately left `unknown` (default not certain): `tries-before-disconnect` (be
       `state: defaulted`, `evidence.source: operator` (the schema's `mapped` requires a config line).
 - [ ] Junos fixes end in `commit confirmed 5` and roll back with `rollback 1`. `fix_ntp_authenticate` uses `type md5`
       for compatibility with 12.1; newer releases accept `sha256`.
+
+## Learning loop (PLAN 2.3–2.6)
+
+- [ ] Normaliser placeholder classes: `<INT> <IPV4> <PREFIX> <IPV6> <MAC> <STR> <IFACE> <DOMAIN> <NAME>`. `<NAME>` comes only from the
+      device's own canonical model (hostname, collection keys), never from spelling. So route-map, prefix-list and zone names stay literal,
+      and such lines cluster per name.
+- [ ] Block headers (lines with children) are never questions.
+- [ ] Confirm refuses rather than guesses: a true/false field needs a stated value, a line with more than one candidate value needs a
+      stated value, and an item attribute needs a slot that names an item the device already lists.
+- [ ] Learned fixtures are synthetic: documentation addresses (192.0.2.1, 2001:db8::1, 0000.5e00.5300), `example` and `example.com`.
+      Integers and interface names are kept from the sample line.
+- [ ] Ranking weights: 0.6 × TF-IDF cosine + 0.4 × token overlap, halved when an integer field meets a line with no integer. Field
+      path words count twice. Known misses: `ios.logging.trap`, `ios.ssh.auth_retries`, `junos.ssh.version`.
+- [ ] A confirmation with no `author` is recorded as `author: unattributed`.
