@@ -2,7 +2,7 @@
 # Every default is scoped to an OS version range; outside it the field stays unknown.
 # REVIEW(H): defaults below reflect IOS 12.x–15.x behaviour and need a human sign-off.
 id: cisco_ios
-version: 1.0.0
+version: 1.1.0
 vendor: cisco
 os_family: ios
 reader: indent_blocks
@@ -126,6 +126,21 @@ mappings:
     default_os_version: '>=12.0'
     fixture: security passwords min-length 8
     expect: 8
+    keep: min
+
+  # The form the DISA STIG checks (CISC-ND-000550). Several policies may exist; the weakest one is kept.
+  - id: ios.password_min_length.cc_policy
+    canonical: auth.password_min_length
+    scope: '^aaa common-criteria policy \S+$'
+    match: '^min-length (\d+)$'
+    keep: min
+    absent: default
+    default: 0
+    default_os_version: '>=12.0'
+    fixture: |
+      aaa common-criteria policy PASSWORD_POLICY
+       min-length 15
+    expect: 15
 
   - id: ios.login_banner
     canonical: auth.login_banner.present
@@ -209,6 +224,24 @@ mappings:
     match: '^logging (?:host )?(?P<value>\d{1,3}(?:\.\d{1,3}){3})(?: .*)?$'
     empty: mapped
     fixture: logging host 10.0.0.5
+
+  # ── Authentication servers ───────────────────────────────────────────
+  # Legacy one-line form; the key that follows is redacted at ingest and not read here.
+  - id: ios.aaa.server.legacy
+    canonical: auth.aaa.servers[]
+    match: '^(?:radius|tacacs)-server host (?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: radius-server host 10.0.0.7 auth-port 1812 acct-port 1813 key 7 ****
+
+  # Named-server form (IOS 15.x and later): the address is inside the `radius server NAME` block.
+  - id: ios.aaa.server.named
+    canonical: auth.aaa.servers[]
+    scope: '^(?:radius|tacacs) server \S+$'
+    match: '^address ipv4 (?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: |
+      tacacs server TAC1
+       address ipv4 10.0.0.8
 
   # ── NTP ──────────────────────────────────────────────────────────────
   - id: ios.ntp.server

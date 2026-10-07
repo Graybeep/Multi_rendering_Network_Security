@@ -369,10 +369,47 @@
                   }
                 }
               ]
+            },
+            "servers": {
+              "description": "Remote authentication servers, RADIUS or TACACS+, that the device checks administrator logins against.",
+              "x-path": "auth.aaa.servers[]",
+              "x-key": null,
+              "x-absent": "empty with state mapped when the file was parsed and no authentication server is configured",
+              "allOf": [
+                {
+                  "$ref": "#/$defs/collection"
+                },
+                {
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/$defs/triple"
+                          },
+                          {
+                            "properties": {
+                              "value": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        ],
+                        "description": "Address or hostname of one authentication server."
+                      }
+                    }
+                  }
+                }
+              ]
             }
           },
           "required": [
-            "enabled"
+            "enabled",
+            "servers"
           ]
         },
         "enable_secret": {

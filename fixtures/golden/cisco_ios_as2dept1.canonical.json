@@ -7,7 +7,7 @@
       "evidence": {
         "line": 7,
         "mapping_id": "cisco_ios.fact.hostname",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "vendor": {
@@ -16,7 +16,7 @@
       "evidence": {
         "line": 3,
         "mapping_id": "cisco_ios.detect",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "os_family": {
@@ -25,7 +25,7 @@
       "evidence": {
         "line": 3,
         "mapping_id": "cisco_ios.detect",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "os_version": {
@@ -34,7 +34,7 @@
       "evidence": {
         "line": 3,
         "mapping_id": "cisco_ios.fact.os_version",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "model": {
@@ -66,7 +66,7 @@
         "evidence": {
           "line": null,
           "mapping_id": "ios.ssh.timeout",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
       },
       "max_auth_tries": {
@@ -75,7 +75,7 @@
         "evidence": {
           "line": null,
           "mapping_id": "ios.ssh.auth_retries",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
       }
     },
@@ -93,7 +93,7 @@
         "evidence": {
           "line": 107,
           "mapping_id": "ios.http.off",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
       }
     },
@@ -104,7 +104,7 @@
         "evidence": {
           "line": 108,
           "mapping_id": "ios.https.off",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
       }
     }
@@ -117,8 +117,13 @@
         "evidence": {
           "line": 14,
           "mapping_id": "ios.aaa.off",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
+      },
+      "servers": {
+        "state": "mapped",
+        "evidence": null,
+        "items": []
       }
     },
     "enable_secret": {
@@ -128,7 +133,7 @@
         "evidence": {
           "line": null,
           "mapping_id": "ios.enable_secret.typed",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
       }
     },
@@ -138,7 +143,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.password_min_length",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "login_banner": {
@@ -148,7 +153,7 @@
         "evidence": {
           "line": null,
           "mapping_id": "ios.login_banner",
-          "pack_version": "cisco_ios@1.0.0"
+          "pack_version": "cisco_ios@1.1.0"
         }
       }
     },
@@ -172,7 +177,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.logging.on",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "level": {
@@ -181,7 +186,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.logging.trap",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "buffered_enabled": {
@@ -202,7 +207,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.ntp.authenticate",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "servers": {
@@ -223,7 +228,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.snmp.traps",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "communities": {
@@ -243,7 +248,7 @@
           "evidence": {
             "line": 51,
             "mapping_id": "ios.intf",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "shutdown": {
@@ -252,7 +257,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.shutdown",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "description": {
@@ -261,7 +266,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.description",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "proxy_arp": {
@@ -270,7 +275,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.proxy_arp.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "ip_redirects": {
@@ -279,7 +284,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.redirects.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "unreachables": {
@@ -288,7 +293,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.unreachables.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "switchport_mode": {
@@ -309,7 +314,7 @@
           "evidence": {
             "line": 54,
             "mapping_id": "ios.intf",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "shutdown": {
@@ -318,7 +323,7 @@
           "evidence": {
             "line": 56,
             "mapping_id": "ios.intf.shutdown",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "description": {
@@ -327,7 +332,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.description",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "proxy_arp": {
@@ -336,7 +341,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.proxy_arp.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "ip_redirects": {
@@ -345,7 +350,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.redirects.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "unreachables": {
@@ -354,7 +359,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.unreachables.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "switchport_mode": {
@@ -375,7 +380,7 @@
           "evidence": {
             "line": 59,
             "mapping_id": "ios.intf",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "shutdown": {
@@ -384,7 +389,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.shutdown",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "description": {
@@ -393,7 +398,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.description",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "proxy_arp": {
@@ -402,7 +407,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.proxy_arp.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "ip_redirects": {
@@ -411,7 +416,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.redirects.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "unreachables": {
@@ -420,7 +425,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.unreachables.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "switchport_mode": {
@@ -441,7 +446,7 @@
           "evidence": {
             "line": 66,
             "mapping_id": "ios.intf",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "shutdown": {
@@ -450,7 +455,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.shutdown",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "description": {
@@ -459,7 +464,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.description",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "proxy_arp": {
@@ -468,7 +473,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.proxy_arp.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "ip_redirects": {
@@ -477,7 +482,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.redirects.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "unreachables": {
@@ -486,7 +491,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.unreachables.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "switchport_mode": {
@@ -507,7 +512,7 @@
           "evidence": {
             "line": 70,
             "mapping_id": "ios.intf",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "shutdown": {
@@ -516,7 +521,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.shutdown",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "description": {
@@ -525,7 +530,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.description",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "proxy_arp": {
@@ -534,7 +539,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.proxy_arp.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "ip_redirects": {
@@ -543,7 +548,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.redirects.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "unreachables": {
@@ -552,7 +557,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.unreachables.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "switchport_mode": {
@@ -573,7 +578,7 @@
           "evidence": {
             "line": 75,
             "mapping_id": "ios.intf",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "shutdown": {
@@ -582,7 +587,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.shutdown",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "description": {
@@ -591,7 +596,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.description",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "proxy_arp": {
@@ -600,7 +605,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.proxy_arp.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "ip_redirects": {
@@ -609,7 +614,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.redirects.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "unreachables": {
@@ -618,7 +623,7 @@
           "evidence": {
             "line": null,
             "mapping_id": "ios.intf.unreachables.on",
-            "pack_version": "cisco_ios@1.0.0"
+            "pack_version": "cisco_ios@1.1.0"
           }
         },
         "switchport_mode": {
@@ -646,7 +651,7 @@
             "evidence": {
               "line": 150,
               "mapping_id": "ios.vty",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           },
           "transport_input": {
@@ -660,7 +665,7 @@
             "evidence": {
               "line": null,
               "mapping_id": "ios.vty.access_class",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           },
           "exec_timeout": {
@@ -669,7 +674,7 @@
             "evidence": {
               "line": null,
               "mapping_id": "ios.vty.exec_timeout",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           }
         }
@@ -688,7 +693,7 @@
             "evidence": {
               "line": 110,
               "mapping_id": "ios.acl.named",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           },
           "entries": {
@@ -702,7 +707,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -711,7 +716,7 @@
                   "evidence": {
                     "line": 111,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -722,7 +727,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -731,7 +736,7 @@
                   "evidence": {
                     "line": 112,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -742,7 +747,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -751,7 +756,7 @@
                   "evidence": {
                     "line": 113,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               }
@@ -765,7 +770,7 @@
             "evidence": {
               "line": 114,
               "mapping_id": "ios.acl.named",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           },
           "entries": {
@@ -779,7 +784,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -788,7 +793,7 @@
                   "evidence": {
                     "line": 115,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -799,7 +804,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -808,7 +813,7 @@
                   "evidence": {
                     "line": 116,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -819,7 +824,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -828,7 +833,7 @@
                   "evidence": {
                     "line": 117,
                     "mapping_id": "ios.acl.named.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               }
@@ -842,7 +847,7 @@
             "evidence": {
               "line": 119,
               "mapping_id": "ios.acl.numbered.entry",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           },
           "entries": {
@@ -856,7 +861,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -865,7 +870,7 @@
                   "evidence": {
                     "line": 119,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -876,7 +881,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -885,7 +890,7 @@
                   "evidence": {
                     "line": 120,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               }
@@ -899,7 +904,7 @@
             "evidence": {
               "line": 121,
               "mapping_id": "ios.acl.numbered.entry",
-              "pack_version": "cisco_ios@1.0.0"
+              "pack_version": "cisco_ios@1.1.0"
             }
           },
           "entries": {
@@ -913,7 +918,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -922,7 +927,7 @@
                   "evidence": {
                     "line": 121,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -933,7 +938,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -942,7 +947,7 @@
                   "evidence": {
                     "line": 122,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -953,7 +958,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -962,7 +967,7 @@
                   "evidence": {
                     "line": 123,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               },
@@ -973,7 +978,7 @@
                   "evidence": {
                     "line": null,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 },
                 "action": {
@@ -982,7 +987,7 @@
                   "evidence": {
                     "line": 124,
                     "mapping_id": "ios.acl.numbered.entry",
-                    "pack_version": "cisco_ios@1.0.0"
+                    "pack_version": "cisco_ios@1.1.0"
                   }
                 }
               }
@@ -999,7 +1004,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.cdp.on",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     },
     "lldp_enabled": {
@@ -1008,7 +1013,7 @@
       "evidence": {
         "line": null,
         "mapping_id": "ios.lldp.on",
-        "pack_version": "cisco_ios@1.0.0"
+        "pack_version": "cisco_ios@1.1.0"
       }
     }
   }

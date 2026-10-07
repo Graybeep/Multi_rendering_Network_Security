@@ -31,7 +31,7 @@ services.ssh.enabled | .version | .timeout | .max_auth_tries
 services.telnet.enabled
 services.http.enabled | services.https.enabled
 
-auth.aaa.enabled
+auth.aaa.enabled | auth.aaa.servers[]
 auth.enable_secret.algorithm
 auth.password_min_length
 auth.login_banner.present

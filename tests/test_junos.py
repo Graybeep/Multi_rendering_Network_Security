@@ -210,7 +210,7 @@ def test_operator_version_unlocks_defaults_and_is_labelled(snapshot: Snapshot, c
     out = audit_device(text, "r", "r", snapshot, catalogue, ["cis"], os_version="15.1R7")
     with_version = {f["rule_id"]: f["verdict"] for f in out["findings"]}
     assert out["canonical"]["device"]["os_version"] == {"value": "15.1R7", "state": "defaulted", "evidence": {
-        "line": None, "mapping_id": "operator.os_version", "pack_version": "junos@1.3.0", "source": "operator"}}
+        "line": None, "mapping_id": "operator.os_version", "pack_version": "junos@1.4.0", "source": "operator"}}
     assert without["cis.login_banner"] == "NOT_DETERMINED"
     assert with_version["cis.login_banner"] == "FAIL"  # no `system login message`; default now applies
 

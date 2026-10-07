@@ -20,7 +20,7 @@ def test_cli_audits_a_batch_and_isolates_a_bad_file(tmp_path: Path) -> None:
     assert {k for k, v in summary.items() if v["status"] == "done"} >= {"as2dept1", "as1core1", "as3border1"}
     for device in ("as2dept1", "as1core1", "as3border1"):
         assert (out / f"{device}.pdf").read_bytes().startswith(b"%PDF")
-        assert summary[device]["vendor_pack"] == "cisco_ios@1.0.0"
+        assert summary[device]["vendor_pack"] == "cisco_ios@1.1.0"
     # An undetectable file is audited as all NOT_DETERMINED, not guessed and not a crash.
     assert summary["garbage"]["status"] == "done"
     assert summary["garbage"]["verdicts"]["fail"] == 0
