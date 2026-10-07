@@ -44,6 +44,49 @@ class MapResult:
     model: Model
     unmatched: list[Unmatched]
     warnings: list[str] = field(default_factory=list)
+    ignored: list[tuple[int, str]] = field(default_factory=list)  # (line_no, ignore id); never in the model
+
+
+def match_line(pack: VendorPack, text: str, parent_text: str | None, line_no: int,
+               warnings: list[str]) -> list[tuple[Mapping, Any, dict[str, str | None]]]:
+    """Every mapping whose pattern and scope match the statement, with its match and scope bindings."""
+    words = text.split(maxsplit=1)
+    candidates = (pack.dispatch.get(words[0], []) if words else []) + pack.wildcard
+    hits: list[tuple[Mapping, Any, dict[str, str | None]]] = []
+    for m in candidates:
+        binds: dict[str, str | None] = {}
+        try:
+            if m.scope is None:
+                if parent_text is not None:
+                    continue
+            else:
+                if parent_text is None:
+                    continue
+                sm = m.scope.match(parent_text)
+                if not sm:
+                    continue
+                binds = sm.groupdict()
+            mm = m.pattern.match(text)
+        except TimeoutError:
+            warnings.append(f"mapping {m.id} timed out on line {line_no}")
+            continue
+        if mm:
+            hits.append((m, mm, binds))
+    return hits
+
+
+def _ignored_by(pack: VendorPack, node: Node, parent: Node | None, warnings: list[str]) -> str | None:
+    for ig in pack.ignores:
+        try:
+            if (ig.scope is None) != (parent is None):
+                continue
+            if ig.scope is not None and parent is not None and not ig.scope.match(parent.text):
+                continue
+            if ig.pattern.match(node.text):
+                return ig.id
+        except TimeoutError:
+            warnings.append(f"mapping {ig.id} timed out on line {node.line_no}")
+    return None
 
 
 def detect(lines: list[str], packs: list[VendorPack]) -> Detection:
@@ -323,27 +366,7 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
                 f"operator-supplied {operator_os_version} was not used")
 
     def visit(node: Node, parent: Node | None) -> None:
-        candidates = pack.dispatch.get(node.text.split(maxsplit=1)[0], []) + pack.wildcard
-        hits: list[tuple[Mapping, Any, dict[str, str | None]]] = []
-        for m in candidates:
-            binds: dict[str, str | None] = {}
-            try:
-                if m.scope is None:
-                    if parent is not None:
-                        continue
-                else:
-                    if parent is None:
-                        continue
-                    sm = m.scope.match(parent.text)
-                    if not sm:
-                        continue
-                    binds = sm.groupdict()
-                mm = m.pattern.match(node.text)
-            except TimeoutError:
-                result.warnings.append(f"mapping {m.id} timed out on line {node.line_no}")
-                continue
-            if mm:
-                hits.append((m, mm, binds))
+        hits = match_line(pack, node.text, parent.text if parent else None, node.line_no, result.warnings)
 
         best: dict[str, list[tuple[Mapping, Any, dict[str, str | None]]]] = {}
         for hit in hits:
@@ -360,8 +383,16 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
             m, mm, binds = group[0]
             applied = writer.apply(m, mm, binds, node.line_no) or applied
         if not applied and node.line_no not in consumed:
-            result.unmatched.append(Unmatched(node.line_no, node.text, node.path,
-                                              parent.line_no if parent else None, not node.children))
+            # An ignore only answers a leaf line that no mapping matched. A line a mapping matched but
+            # could not read stays a question, so an ignore can never hide a setting.
+            ignore_id = None
+            if not hits and not node.children:
+                ignore_id = _ignored_by(pack, node, parent, result.warnings)
+            if ignore_id is not None:
+                result.ignored.append((node.line_no, ignore_id))
+            else:
+                result.unmatched.append(Unmatched(node.line_no, node.text, node.path,
+                                                  parent.line_no if parent else None, not node.children))
         for child in node.children:
             visit(child, node)
 

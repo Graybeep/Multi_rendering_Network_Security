@@ -1,7 +1,7 @@
 """One device, end to end: ingest → redact → detect → read → map → evaluate → remediate. Pure; no I/O.
 
 The returned dict is shaped like `DeviceFindings` in docs/openapi.yaml, plus internal fields
-(`canonical`, `unmatched`, `warnings`, `sha256`) the report, CLI and learning loop use.
+(`canonical`, `unmatched`, `ignored`, `warnings`, `sha256`) the report, CLI and learning loop use.
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ def _error(device_id: str, filename: str, message: str, sha: str) -> dict[str, A
             "vendor_pack": None, "detection_ambiguous": False,
             "identity": dict.fromkeys(IDENTITY), "verdicts": {"pass": 0, "fail": 0, "not_determined": 0},
             "coverage": {"mapped": 0, "defaulted": 0, "unknown": 0, "ratio": 0.0},
-            "findings": [], "sha256": sha, "canonical": None, "unmatched": [], "warnings": []}
+            "findings": [], "sha256": sha, "canonical": None, "unmatched": [], "ignored": [], "warnings": []}
 
 
 def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catalogue: Catalogue,
@@ -75,6 +75,7 @@ def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catal
     detection = detect(lines, list(snap.vendors.values()))
     pack = detection.pack
     unmatched: list[dict[str, Any]] = []
+    ignored: list[dict[str, Any]] = []
     warnings: list[str] = []
     if pack is None:
         # No pack (or a tie): every field stays unknown, so every rule is NOT_DETERMINED. No guessing.
@@ -96,6 +97,8 @@ def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catal
                       "raw": lines[u.line_no - 1],
                       "parent_raw": lines[u.parent_line - 1] if u.parent_line else None}
                      for u in mapped.unmatched]
+        # Lines an ignore entry answered as carrying no setting: kept so an audit can see what was set aside.
+        ignored = [{"line_no": n, "ignore_id": i} for n, i in mapped.ignored]
 
     device = model["device"]
     os_family, os_version = device["os_family"]["value"], device["os_version"]["value"]
@@ -156,5 +159,6 @@ def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catal
         "sha256": sha,
         "canonical": model,
         "unmatched": unmatched,
+        "ignored": ignored,
         "warnings": warnings,
     }

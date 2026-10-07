@@ -214,6 +214,49 @@ paths:
               schema: {$ref: '#/components/schemas/Error'}
         '422': {$ref: '#/components/responses/Unprocessable'}
 
+  /api/clusters/{cluster_id}/ignore:
+    post:
+      tags: [training]
+      operationId: ignoreCluster
+      summary: Human answers "not a security setting"; writes an ignore entry
+      description: |
+        A third answer beside confirming a field. It is never a default and never pre-selected,
+        whatever the suggestion scores are. The entry goes in `packs/learned/<vendor>.yaml` with
+        `canonical: null`, `ignore: true` and the stated `reason`. It applies to every device of
+        that vendor, and it is removed like any pack entry.
+
+        An ignored line leaves the question queue and nothing else changes. It writes no field,
+        so it never changes a verdict: a rule whose field is still unmapped stays NOT_DETERMINED.
+        `dry_run`, validation and the reload behave as for confirm. Re-run with
+        `POST /api/scans/{id}/reevaluate` to see the cluster gone.
+      parameters:
+        - {$ref: '#/components/parameters/ClusterId'}
+        - name: dry_run
+          in: query
+          required: false
+          schema: {type: boolean, default: false}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/IgnoreRequest'}
+      responses:
+        '200':
+          description: Entry written (or previewed when dry_run=true). `mapping_id` is the ignore entry's id.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConfirmResult'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: |
+            Nothing written. A mapping matches this line but cannot read it, so the line may carry a
+            setting and that mapping needs extending. Also returned when the cluster was already
+            answered, or the vendor pack is no longer installed. `message` says which.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+
   /api/scans/{scan_id}/reevaluate:
     post:
       tags: [scans]
@@ -589,6 +632,22 @@ components:
         author:
           type: [string, 'null']
           description: Who confirmed the mapping; recorded as provenance.
+
+    IgnoreRequest:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 2
+          examples: [structural marker, carries no security setting]
+          description: |
+            Free text, required. Why the line carries no security setting. Recorded in the pack.
+            The form should ask for it with an empty text box, never a pre-filled one.
+        author:
+          type: [string, 'null']
+          description: Who answered; recorded as provenance.
 
     ConfirmResult:
       type: object

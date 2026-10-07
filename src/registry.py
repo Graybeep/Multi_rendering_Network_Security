@@ -36,7 +36,8 @@ def _find_mapped(node: Any, mapping_id: str) -> list[Any]:
 
 
 def check_fixtures(pack: VendorPack, catalogue: Catalogue) -> None:
-    """Every mapping's fixture must match it, produce `expect` if given, and never be ambiguous."""
+    """Every mapping's fixture must match it, produce `expect` if given, and never be ambiguous.
+    Every ignore's fixture must be ignored by it, which fails when a mapping claims the line."""
     reader = READERS.get(pack.reader)
     if reader is None:
         raise PackError(f"{pack.id}: field reader: {pack.reader!r} is not implemented yet")
@@ -52,6 +53,20 @@ def check_fixtures(pack: VendorPack, catalogue: Catalogue) -> None:
         if "expect" in m.raw and m.raw["expect"] not in values:
             raise PackError(f"{pack.id}: mapping {m.id}: field expect: fixture produced {values!r}, "
                             f"expected {m.raw['expect']!r}")
+    for ig in pack.ignores:
+        lines = redact(ig.fixture.rstrip("\n"))
+        try:
+            own = bool(ig.pattern.match(lines[-1].strip())) and (
+                len(lines) == 1 if ig.scope is None else bool(ig.scope.match(lines[0].strip())))
+        except TimeoutError:
+            own = False
+        if not own:
+            raise PackError(f"{pack.id}: mapping {ig.id}: field fixture: does not match its own pattern and scope")
+        # Another ignore may claim the line first; overlapping ignores are harmless. A mapping claiming it is not.
+        result = map_device(pack, reader(lines), lines, catalogue, None)
+        if all(n != len(lines) for n, _ in result.ignored):
+            raise PackError(f"{pack.id}: mapping {ig.id}: field fixture: a mapping reads that line, "
+                            "and an ignore never hides a mapped line")
 
 
 @dataclass
@@ -72,7 +87,8 @@ class Snapshot:
             if v.learned_version:
                 out.append({"id": f"{v.id}_learned", "kind": "learned", "version": v.learned_version,
                             "source": "learned", "vendor": v.vendor,
-                            "mapping_count": sum(1 for m in v.mappings if m.raw.get("source") == "learned"),
+                            "mapping_count": sum(m.raw.get("source") == "learned" for m in v.mappings)
+                                            + sum(i.raw.get("source") == "learned" for i in v.ignores),
                             "rule_count": None})
         for r in self.rules.values():
             out.append({"id": r.id, "kind": "rule", "version": r.version, "source": "shipped",

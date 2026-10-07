@@ -239,6 +239,38 @@ mappings:            # identical schema to a vendor pack's mappings, plus:
 
 Learned mappings get priority 100 (shipped: 0), so they outrank shipped ones.
 
+### Ignore entries — "not a security setting"
+
+A line that carries no security setting (`boot-start-marker`, `end`) is answered with
+an ignore entry in the same `mappings:` list. It is a mapping with no target:
+
+```yaml
+  - id: cisco_ios.ignore.c1a2b3c4d5e6f7a8
+    canonical: null
+    ignore: true
+    match: "^boot-start-marker$"
+    reason: structural marker, carries no security setting   # required, free text
+    fixture: boot-start-marker
+    source: learned          # plus author, created, cluster_signature as usual
+```
+
+An ignore is **"this text carries no setting", never "this setting is fine"**. It only
+removes the line from the learning queue. It writes nothing to the canonical model,
+so it cannot change a verdict, and a rule whose field is still unmapped stays
+`NOT_DETERMINED`. Other rules:
+
+- `reason` is required. An ignore with no stated reason is how a real setting gets
+  dropped without anyone noticing.
+- No `absent`, `value`, `cast`, `default` or `expect`: there is no field to fill.
+- It applies only when no mapping matches the line. A line a mapping matches but
+  cannot read (a capture missing from `map:`) stays in the queue. The loader rejects
+  an ignore whose fixture a mapping matches: an ignore never hides a mapped line.
+- It applies to leaf lines only. A block header is never a question, and ignoring
+  one would not hide the lines inside it.
+- Scope is the vendor, for good: it lives in the vendor's learned pack. There is no
+  per-scan or per-device ignore yet.
+- It is removed like any pack entry: delete it and the line returns to the queue.
+
 An administrator's labelling session **is** a pack fragment — exportable and
 shippable as a first-class vendor pack next release. That equivalence is the point;
 do not invent a second format for learned content.

@@ -60,6 +60,21 @@ class Mapping:
 
 
 @dataclass
+class Ignore:
+    """A line that carries no security setting. It leaves the learning queue and writes nothing to the model."""
+
+    id: str
+    pattern: SafePattern
+    scope: SafePattern | None
+    raw: dict[str, Any]
+    pack_version: str
+
+    @property
+    def fixture(self) -> str:
+        return str(self.raw["fixture"])
+
+
+@dataclass
 class VendorPack:
     id: str
     version: str
@@ -73,6 +88,7 @@ class VendorPack:
     learned_version: str | None = None
     inheritance: list[SafePattern] = field(default_factory=list)
     constants: dict[str, Any] = field(default_factory=dict)  # normalised canonical path -> value
+    ignores: list[Ignore] = field(default_factory=list)
     dispatch: dict[str, list[Mapping]] = field(default_factory=dict)
     wildcard: list[Mapping] = field(default_factory=list)
 
@@ -143,6 +159,28 @@ def build_mapping(raw: dict[str, Any], catalogue: Catalogue, pack_version: str,
                    priority, spec, item_specs)
 
 
+def build_ignore(raw: dict[str, Any], pack_version: str, where: str) -> Ignore:
+    loc = f"{where}: mapping {raw['id']}"
+    pattern = _compile(raw["match"], loc, "match")
+    scope = scope_pattern(raw["scope"]) if "scope" in raw else None
+    return Ignore(raw["id"], pattern, scope, raw, pack_version)
+
+
+def _build_entries(raws: list[dict[str, Any]], catalogue: Catalogue, tag: str, where: str,
+                   default_priority: int, seen: set[str]) -> tuple[list[Mapping], list[Ignore]]:
+    mappings: list[Mapping] = []
+    ignores: list[Ignore] = []
+    for raw in raws:
+        if raw["id"] in seen:
+            raise PackError(f"{where}: mapping {raw['id']}: field id: duplicate of an existing mapping")
+        seen.add(raw["id"])
+        if raw.get("ignore"):
+            ignores.append(build_ignore(raw, tag, where))
+        else:
+            mappings.append(build_mapping(raw, catalogue, tag, where, default_priority))
+    return mappings, ignores
+
+
 def _check_absent_consistency(mappings: list[Mapping], where: str) -> None:
     decl: dict[str, tuple[Any, ...]] = {}
     for m in mappings:
@@ -195,13 +233,7 @@ def load_vendor_pack(path: Path, catalogue: Catalogue) -> VendorPack:
     facts = {name: (_compile(f["pattern"], path.name, f"facts/{name}"), int(f.get("group", 1)))
              for name, f in (doc.get("facts") or {}).items()}
 
-    seen: set[str] = set()
-    mappings = []
-    for raw in doc["mappings"]:
-        if raw["id"] in seen:
-            raise PackError(f"{path.name}: mapping {raw['id']}: field id: duplicate")
-        seen.add(raw["id"])
-        mappings.append(build_mapping(raw, catalogue, tag, path.name, 0))
+    mappings, ignores = _build_entries(doc["mappings"], catalogue, tag, path.name, 0, set())
     _check_absent_consistency(mappings, path.name)
 
     inheritance = [_compile(src, path.name, f"unresolved_inheritance/{i}")
@@ -209,28 +241,24 @@ def load_vendor_pack(path: Path, catalogue: Catalogue) -> VendorPack:
     constants = _load_constants(doc.get("constants") or {}, mappings, catalogue, path.name)
     pack = VendorPack(doc["id"], doc["version"], doc["vendor"], doc["os_family"], doc["reader"],
                       detect, int(doc.get("min_score", 1)), facts, mappings, inheritance=inheritance,
-                      constants=constants)
+                      constants=constants, ignores=ignores)
     pack.index()
     return pack
 
 
 def merge_learned(pack: VendorPack, path: Path, catalogue: Catalogue) -> VendorPack:
-    """Learned mappings use the vendor-pack mapping schema and outrank shipped ones by default."""
+    """Learned entries use the vendor-pack mapping schema and outrank shipped mappings by default."""
     doc = read_yaml(path)
     validate_pack(doc, "learned_pack", path.name)
     if doc["vendor_pack"] != pack.id:
         raise PackError(f"{path.name}: field vendor_pack: {doc['vendor_pack']!r} does not match {pack.id!r}")
     tag = f"{pack.id}_learned@{doc['version']}"
-    seen = {m.id for m in pack.mappings}
-    learned = []
-    for raw in doc["mappings"]:
-        if raw["id"] in seen:
-            raise PackError(f"{path.name}: mapping {raw['id']}: field id: duplicate of an existing mapping")
-        seen.add(raw["id"])
-        learned.append(build_mapping(raw, catalogue, tag, path.name, LEARNED_PRIORITY))
+    seen = {m.id for m in pack.mappings} | {i.id for i in pack.ignores}
+    learned, ignores = _build_entries(doc["mappings"], catalogue, tag, path.name, LEARNED_PRIORITY, seen)
     merged = VendorPack(pack.id, pack.version, pack.vendor, pack.os_family, pack.reader, pack.detect,
                         pack.min_score, pack.facts, pack.mappings + learned, doc["version"],
-                        inheritance=pack.inheritance, constants=pack.constants)
+                        inheritance=pack.inheritance, constants=pack.constants,
+                        ignores=pack.ignores + ignores)
     _check_absent_consistency(merged.mappings, path.name)
     _check_constants_unmapped(merged.constants, learned, path.name)
     merged.index()

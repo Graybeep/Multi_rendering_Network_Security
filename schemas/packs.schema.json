@@ -55,6 +55,31 @@
          "then": {"required": ["default", "default_os_version"]}}
       ]
     },
+    "ignore": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A line that carries no security setting. Removes it from the learning queue; writes nothing to the canonical model, so it never changes a verdict.",
+      "required": ["id", "canonical", "ignore", "match", "reason", "fixture"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9_.]+$"},
+        "canonical": {"type": "null"},
+        "ignore": {"const": true},
+        "match": {"type": "string", "pattern": "^\\^", "description": "Anchored regex against the statement text (indentation stripped)."},
+        "scope": {"type": "string", "description": "As for a mapping."},
+        "reason": {"type": "string", "pattern": "\\S\\s*\\S", "description": "Why the line carries no security setting. Required: an ignore with no stated reason is how a real setting gets dropped."},
+        "fixture": {"type": "string", "minLength": 1, "description": "Config snippet this entry must ignore."},
+        "source": {"enum": ["shipped", "learned"]},
+        "author": {"type": "string"},
+        "created": {"type": "string"},
+        "cluster_signature": {"type": "string"}
+      }
+    },
+    "entry": {
+      "description": "One item of a mappings list: an ignore entry when `ignore` is present, otherwise a mapping.",
+      "if": {"type": "object", "required": ["ignore"]},
+      "then": {"$ref": "#/$defs/ignore"},
+      "else": {"$ref": "#/$defs/mapping"}
+    },
     "vendor_pack": {
       "type": "object",
       "additionalProperties": false,
@@ -77,7 +102,7 @@
             "serial": {"$ref": "#/$defs/fact"}
           }
         },
-        "mappings": {"type": "array", "items": {"$ref": "#/$defs/mapping"}},
+        "mappings": {"type": "array", "items": {"$ref": "#/$defs/entry"}},
         "constants": {
           "type": "object", "propertyNames": {"pattern": "^[a-z_]+([.][a-z_]+)+$"},
           "description": "Canonical scalar field → value that holds for every device of this platform regardless of config, e.g. discovery.cdp_enabled: false on a platform without CDP. Emitted as defaulted with evidence.source platform_constant. A field may not be both a constant and a mapping target."
@@ -101,7 +126,7 @@
         "version": {"$ref": "#/$defs/semver"},
         "mappings": {
           "type": "array",
-          "items": {"allOf": [{"$ref": "#/$defs/mapping"},
+          "items": {"allOf": [{"$ref": "#/$defs/entry"},
                               {"required": ["source", "author", "created", "cluster_signature"],
                                "properties": {"source": {"const": "learned"}}}]}
         }

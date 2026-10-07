@@ -190,17 +190,46 @@ def author_mapping(cluster: Cluster, request: dict[str, Any], catalogue: Catalog
             mapping["default"] = request["default"]
             mapping["default_os_version"] = request["default_os_version"]
 
+    mapping["fixture"] = _fixture(sample)
+    mapping["expect"] = expect
+    mapping.update(_provenance(cluster, request, created))
+    _check_covers(mapping, cluster)
+    return mapping
+
+
+def _provenance(cluster: Cluster, request: dict[str, Any], created: str) -> dict[str, Any]:
+    return {"source": "learned", "author": request.get("author") or "unattributed", "created": created,
+            "cluster_signature": f"{cluster.scope} :: {cluster.signature}" if cluster.scope
+            else cluster.signature}
+
+
+def _fixture(sample: Member) -> str:
     fixture = example_line(sample.raw, sample.known)
     if sample.parent_raw is not None:
         fixture = example_line(sample.parent_raw, sample.known) + "\n" + fixture
-    mapping["fixture"] = fixture
-    mapping["expect"] = expect
-    mapping.update({"source": "learned", "author": request.get("author") or "unattributed",
-                    "created": created,
-                    "cluster_signature": f"{cluster.scope} :: {cluster.signature}" if cluster.scope
-                    else cluster.signature})
-    _check_covers(mapping, cluster)
-    return mapping
+    return fixture
+
+
+def author_ignore(cluster: Cluster, request: dict[str, Any], created: str) -> dict[str, Any]:
+    """"Not a security setting": an entry that takes the cluster's lines out of the queue and writes no field.
+
+    `request` is an `IgnoreRequest` from docs/openapi.yaml. The reason is required and recorded, because an
+    ignore with no stated reason is how a real setting gets dropped without anyone noticing.
+    """
+    reason = (request.get("reason") or "").strip()
+    if len(reason) < 2:
+        raise AuthorError("state why this line carries no security setting; the reason is recorded in the pack",
+                          "reason")
+    sample = cluster.sample
+    entry: dict[str, Any] = {"id": f"{cluster.vendor}.ignore.{cluster.cluster_id[1:]}", "canonical": None,
+                             "ignore": True, "match": _pattern(sample.line, {})}
+    if sample.scope is not None:
+        entry["scope"] = _pattern(sample.scope, {})
+    entry["reason"] = reason
+    entry["fixture"] = _fixture(sample)
+    entry.update(_provenance(cluster, request, created))
+    _check_covers(entry, cluster)
+    return entry
 
 
 def _check_covers(mapping: dict[str, Any], cluster: Cluster) -> None:

@@ -6,8 +6,9 @@ Packs hot-reload: every scan takes a fresh registry snapshot, so a pack dropped 
 folder is used by the next scan or re-evaluation without a restart.
 
 The learning loop writes only `packs/learned/<vendor>.yaml`, and only after a human confirms. A
-confirmed mapping is validated with the same loader and fixture checks as a shipped pack before the
-file is replaced, so a bad answer is refused rather than half-applied.
+confirmed mapping, or an ignore entry ("not a security setting"), is validated with the same loader and
+fixture checks as a shipped pack before the file is replaced, so a bad answer is refused rather than
+half-applied.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ import secrets
 import tempfile
 import threading
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,10 +34,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
 from src.batch import MAX_BYTES, Job, device_ids, error_row, run_batch
-from src.learning.author import AuthorError, append, author_mapping
+from src.learning.author import AuthorError, append, author_ignore, author_mapping
 from src.learning.cluster import Cluster, build_clusters
 from src.learning.rank import rank
 from src.mapping.canonical import SCHEMA_PATH
+from src.mapping.engine import match_line
 from src.mapping.pack import load_vendor_pack, merge_learned
 from src.packs import PackError, read_yaml, validate_pack
 from src.registry import Registry, check_fixtures
@@ -51,6 +54,7 @@ MAX_SCANS = 50  # oldest finished scans are dropped beyond this
 # The Vite dev and preview servers. Loopback origins only.
 ALLOWED_ORIGINS = [f"http://{h}:{p}" for h in ("127.0.0.1", "localhost") for p in (5173, 4173)]
 _CONFIRM_KEYS = {"canonical_field", "absent", "default", "default_os_version", "value", "author"}
+_IGNORE_KEYS = {"reason", "author"}
 _SUMMARY_KEYS = ("device_id", "filename", "status", "error", "vendor_pack", "detection_ambiguous",
                  "identity", "verdicts", "coverage")
 
@@ -316,6 +320,29 @@ def create_app(packs: Path = DEFAULT_PACKS, workers: int | None = None, timeout:
     def confirm_cluster(cluster_id: str, body: Annotated[Any, Body()], dry_run: bool = False) -> dict[str, Any]:
         cluster = _cluster(cluster_id)
         request = _confirm_request(body)
+        return _learn(cluster, lambda created: author_mapping(cluster, request, registry.catalogue, created),
+                      dry_run)
+
+    @app.post("/api/clusters/{cluster_id}/ignore")
+    def ignore_cluster(cluster_id: str, body: Annotated[Any, Body()], dry_run: bool = False) -> dict[str, Any]:
+        cluster = _cluster(cluster_id)
+        request = _ignore_request(body)
+        _refuse_if_mapped(cluster)
+        return _learn(cluster, lambda created: author_ignore(cluster, request, created), dry_run)
+
+    def _refuse_if_mapped(cluster: Cluster) -> None:
+        """A line a mapping matches but cannot read is a gap in that mapping, not a line without a setting."""
+        pack = registry.snapshot().vendors.get(cluster.vendor)
+        if pack is None:
+            raise ApiError(409, "pack_missing", f"vendor pack {cluster.vendor!r} is no longer installed")
+        for m in cluster.members:
+            hits = match_line(pack, m.text, m.parent_text, 0, [])
+            if hits:
+                ids = ", ".join(sorted(h[0].id for h in hits))
+                raise ApiError(409, "conflict", f"mapping {ids} matches this line but cannot read it, so it may "
+                               "carry a setting; extend that mapping instead of ignoring the line")
+
+    def _learn(cluster: Cluster, author: Callable[[str], dict[str, Any]], dry_run: bool) -> dict[str, Any]:
         vendor_path = registry.root / "vendors" / f"{cluster.vendor}.yaml"
         if not vendor_path.exists():
             raise ApiError(409, "pack_missing", f"vendor pack {cluster.vendor!r} is no longer installed")
@@ -323,7 +350,7 @@ def create_app(packs: Path = DEFAULT_PACKS, workers: int | None = None, timeout:
         created = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         with learn_lock:
             try:
-                mapping = author_mapping(cluster, request, registry.catalogue, created)
+                mapping = author(created)
             except AuthorError as exc:
                 raise ApiError(exc.status, "not_learnable", str(exc), exc.field) from exc
             current = read_yaml(learned_path) if learned_path.exists() else None
@@ -351,6 +378,17 @@ def create_app(packs: Path = DEFAULT_PACKS, workers: int | None = None, timeout:
         if body.get("absent") not in ("unknown", "default"):
             raise ApiError(422, "unprocessable", "absent must be 'unknown' or 'default'", "absent")
         for name in ("author", "default_os_version"):
+            if body.get(name) is not None and not isinstance(body[name], str):
+                raise ApiError(422, "unprocessable", f"{name} must be a string", name)
+        return body
+
+    def _ignore_request(body: Any) -> dict[str, Any]:
+        if not isinstance(body, dict):
+            raise ApiError(422, "unprocessable", "body must be a JSON object")
+        extra = sorted(set(body) - _IGNORE_KEYS)
+        if extra:
+            raise ApiError(422, "unprocessable", f"unknown field(s) {extra}", extra[0])
+        for name in ("reason", "author"):
             if body.get(name) is not None and not isinstance(body[name], str):
                 raise ApiError(422, "unprocessable", f"{name} must be a string", name)
         return body
