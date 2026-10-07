@@ -39,7 +39,7 @@ def test_scoped_mapping_lands_on_the_right_interface(snapshot: Snapshot, catalog
     model = _map(snapshot, catalogue, "version 15.2\ninterface Gi0/1\n no ip proxy-arp\ninterface Gi0/2\n shutdown\n")
     items = {i["name"]["value"]: i for i in model["interfaces"]["items"]}
     assert items["Gi0/1"]["proxy_arp"] == {"value": False, "state": "mapped", "evidence": {
-        "line": 3, "mapping_id": "ios.intf.proxy_arp.off", "pack_version": "cisco_ios@1.1.0"}}
+        "line": 3, "mapping_id": "ios.intf.proxy_arp.off", "pack_version": "cisco_ios@1.2.0"}}
     assert items["Gi0/2"]["proxy_arp"]["state"] == "defaulted"
     assert items["Gi0/2"]["shutdown"]["value"] is True
 

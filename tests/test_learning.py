@@ -129,7 +129,7 @@ def test_the_right_field_is_in_the_top_three(snapshot: Snapshot, catalogue: Cata
     misses = sorted(mid for mid, cluster, target in cases
                     if target not in [c["canonical_field"] for c in rank(cluster, catalogue, 3)])
     assert misses == ["junos.ssh.version"]
-    assert len(cases) == 61
+    assert len(cases) == 63
 
 
 def test_suggestions_match_the_contract_and_only_offer_learnable_fields(snapshot: Snapshot,

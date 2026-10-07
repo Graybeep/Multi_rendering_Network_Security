@@ -2,7 +2,7 @@
 # Every default is scoped to an OS version range; outside it the field stays unknown.
 # REVIEW(H): defaults below reflect IOS 12.x–15.x behaviour and need a human sign-off.
 id: cisco_ios
-version: 1.1.0
+version: 1.2.0
 vendor: cisco
 os_family: ios
 reader: indent_blocks
@@ -219,11 +219,19 @@ mappings:
     fixture: no logging buffered
     expect: false
 
+  # Bare `logging A.B.C.D`: IPv4 only, because `logging <word>` is also every other logging setting.
   - id: ios.logging.host
     canonical: logging.servers[]
-    match: '^logging (?:host )?(?P<value>\d{1,3}(?:\.\d{1,3}){3})(?: .*)?$'
+    match: '^logging (?P<value>\d{1,3}(?:\.\d{1,3}){3})(?: .*)?$'
     empty: mapped
-    fixture: logging host 10.0.0.5
+    fixture: logging 10.0.0.5
+
+  # `logging host` names a server whatever follows: IPv4, IPv6 (`logging host ipv6 X`) or a hostname.
+  - id: ios.logging.host.keyword
+    canonical: logging.servers[]
+    match: '^logging host (?:ipv6 )?(?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: logging host ipv6 2001:db8::5 vrf MGMT
 
   # ── Authentication servers ───────────────────────────────────────────
   # Legacy one-line form; the key that follows is redacted at ingest and not read here.
@@ -237,18 +245,28 @@ mappings:
   - id: ios.aaa.server.named
     canonical: auth.aaa.servers[]
     scope: '^(?:radius|tacacs) server \S+$'
-    match: '^address ipv4 (?P<value>\S+)(?: .*)?$'
+    match: '^address ipv[46] (?P<value>\S+)(?: .*)?$'
     empty: mapped
     fixture: |
       tacacs server TAC1
        address ipv4 10.0.0.8
 
+  # A server defined only inside a server group: `aaa group server radius G` then ` server-private X key ...`.
+  - id: ios.aaa.server.private
+    canonical: auth.aaa.servers[]
+    scope: '^aaa group server (?:radius|tacacs\+) \S+$'
+    match: '^server-private (?P<value>\S+)(?: .*)?$'
+    empty: mapped
+    fixture: |
+      aaa group server radius RG
+       server-private 10.0.0.9 key 7 ****
+
   # ── NTP ──────────────────────────────────────────────────────────────
   - id: ios.ntp.server
     canonical: ntp.servers[]
-    match: '^ntp server (?:vrf \S+ )?(?P<value>\S+)(?: .*)?$'
+    match: '^ntp server (?:vrf \S+ )?(?:ip |ipv6 )?(?P<value>\S+)(?: .*)?$'
     empty: mapped
-    fixture: ntp server 10.0.0.1
+    fixture: ntp server ipv6 2001:db8::1
 
   - id: ios.ntp.authenticate
     canonical: ntp.authenticate
