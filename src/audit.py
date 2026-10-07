@@ -91,7 +91,11 @@ def audit_device(text: str, filename: str, device_id: str, snap: Snapshot, catal
         except AmbiguousMapping as exc:
             return _error(device_id, filename, f"ambiguous mapping: {exc}", sha)
         model, warnings = mapped.model, mapped.warnings
-        unmatched = [{"line_no": u.line_no, "text": u.text, "scope": list(u.path)} for u in mapped.unmatched]
+        # `raw` and `parent_raw` are the redacted source lines, indentation kept, for the learning loop.
+        unmatched = [{"line_no": u.line_no, "text": u.text, "scope": list(u.path), "leaf": u.leaf,
+                      "raw": lines[u.line_no - 1],
+                      "parent_raw": lines[u.parent_line - 1] if u.parent_line else None}
+                     for u in mapped.unmatched]
 
     device = model["device"]
     os_family, os_version = device["os_family"]["value"], device["os_version"]["value"]

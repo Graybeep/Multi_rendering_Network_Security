@@ -35,6 +35,8 @@ class Unmatched:
     line_no: int
     text: str
     path: tuple[str, ...]
+    parent_line: int | None = None  # source line of the enclosing block, for a learned mapping's scope
+    leaf: bool = True  # False for a block header: its children carry the settings
 
 
 @dataclass
@@ -358,7 +360,8 @@ def map_device(pack: VendorPack, nodes: list[Node], lines: list[str], catalogue:
             m, mm, binds = group[0]
             applied = writer.apply(m, mm, binds, node.line_no) or applied
         if not applied and node.line_no not in consumed:
-            result.unmatched.append(Unmatched(node.line_no, node.text, node.path))
+            result.unmatched.append(Unmatched(node.line_no, node.text, node.path,
+                                              parent.line_no if parent else None, not node.children))
         for child in node.children:
             visit(child, node)
 
