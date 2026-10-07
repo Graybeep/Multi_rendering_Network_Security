@@ -120,7 +120,7 @@ Cut from here first if you are behind.
 | 3.1a | **DONE.** `brace_tree` reader; parity on **generated** pairs (5 real flat configs, hierarchical form derived by the test): identical statements, canonical models and CIS verdicts; Batfish grammar snippets; redaction fixes for brace structure | CC | High |
 | 3.1c | **OPEN.** Parity against one **real captured pair**: `show configuration` and `show configuration \| display set`, same device, same commit. Blocker is sourcing, not code. Does not block Phase 3 | H + CC | High |
 | 3.1b | FortiOS reader + `fortios.yaml` (third vendor). FortiOS is block-nested by `config`/`end` and `edit`/`next`, not path-per-line, so `set_commands` does not cover it | CC | High |
-| 3.2 | NIST and STIG rule packs, 5 rules each, so the framework selector is real | H + CC | High |
+| 3.2 | NIST and STIG rule packs, 5 rules each, so the framework selector is real. *STIG 0.1.0 landed 2026-10-07, awaiting sign-off; NIST open; CIS L1/L2 pair blocked on the CIS document (see 3.2 note)* | H + CC | High |
 | 3.3 | Fleet statistics: compliance rate by severity and control, Pareto ranking, coverage % | CC | High — this is the statistical-analysis slide |
 | 3.4 | Results dashboard with fleet rollup | CX | High |
 | 3.5 | Packs screen showing installed packs and versions | CX | Medium |
@@ -145,6 +145,36 @@ Sourcing 3.1c, cheapest first:
 
 The capture also settles the one known reader divergence (`set a b` beside
 `set a b c`; see `review-queue.md`, "Reader divergence").
+
+**3.2 note — what "the framework selector is real" means.**
+
+*Selection rule.* Choose controls where the frameworks disagree, or where one is
+materially stricter: a different threshold on the same setting, a requirement one
+framework makes and another omits, or a CIS Level 1 / Level 2 pair. "Controls our
+fields already cover" is not the rule. A field a control needs is added (additive is
+free).
+
+*Demo acceptance.* Same device, same scan. Switch framework in the UI. At least 3
+verdicts change, and at least 1 rule appears in one framework and not the other. If
+switching gives the same findings under different IDs, 3.2 is not done. A verdict
+"changes" when a canonical field is judged differently: PASS vs FAIL, or judged in
+one framework and not at all in the other.
+
+*Measured 2026-10-07, CIS vs STIG 0.1.0, real fixtures.* `as2border2` (Cisco):
+4 fields judged by STIG and not by CIS (`auth.aaa.servers`, vty `exec_timeout`,
+`auth.password_min_length`, `ntp.servers`), all FAIL; `logging.servers` FAIL in
+both. That meets the bar, but only through the "omits" shape. **The threshold shape
+is not yet shown on real data:** syslog is CIS ≥ 1 vs STIG ≥ 2, and every fixture
+has 0 or 2 servers, never 1. It needs a real config with exactly one syslog server
+(or another threshold pair); a made-up config does not count (invariant 4).
+
+*Sources.* STIG: DISA XCCDF, parsed by `scripts/stig_xccdf.py`; extract and hashes
+in `docs/sources/stig-ndm-extract.md`. NIST: SP 800-53 Rev. 5, reached through the
+CCIs each STIG rule already cites, so a NIST rule traces STIG → SRG → CCI → 800-53
+control rather than being a free interpretation. CIS: **no benchmark document is in
+the repository.** Every CIS rule has `control: null`, and an L1/L2 pair cannot be
+cited without it. A team member must download the CIS Cisco IOS and Juniper
+benchmarks (free with registration) and keep them out of the repository.
 
 ---
 

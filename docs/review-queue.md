@@ -82,3 +82,38 @@ Two classes. A **wrong-token** finding masks a setting or leaves a secret in cle
 - [ ] Still not done, for 3.9: `snmp-server host` (IOS/NX-OS) still takes `\S+`; it has no brace form, so no
       structural risk, but a quoted community there leaks the same way (`"two words"` → `**** words"`). Pinned by
       `test_snmp_host_quoted_community_is_masked_whole`, a strict xfail: the fix flips it and must remove the marker.
+
+## STIG rule pack — `packs/rules/stig.yaml` 0.1.0 (PLAN 3.2)
+
+Sign-off means: you read the check text in `docs/sources/stig-ndm-extract.md` and you agree the assertion
+captures it, **for the reason written**, or you write a better one. "Looks right" is not a sign-off. The "case"
+lines are the agent's argument, not approval.
+
+- [ ] **`control` is the SRG ID**, not a product STIG ID. Case: our rules are vendor-neutral, and the SRG ID is
+      the one identifier the Cisco (CISC-ND-…) and Juniper (JUNI-ND-…) STIGs share for each requirement. Both
+      product IDs sit in a comment above each rule.
+- [ ] `stig.logging.two_servers` · `SRG-APP-000516-NDM-000350` · `length(logging.servers) >= 2`, lower bound.
+      Case: the rule titles in both STIGs say "at least two syslog servers". Caveat: the Cisco check's last sentence
+      says only "not configured to send log data to the syslog servers"; we follow the title.
+- [ ] `stig.vty.idle_timeout` · `SRG-APP-000190-NDM-000267` · every vty line: `0 < exec_timeout <= 300`.
+      Case: Cisco check: `exec-timeout 5 0` on vty and console; `exec-timeout 0` means never, so it fails.
+      **Narrower than the control:** console and aux are not checked, because the model has no field for them.
+      **NOT_DETERMINED on every Junos device**, because Junos sets idle time per login class, and nothing maps that.
+      Team decision: model a device-wide idle timeout (`session.idle_timeout`, unmapped today) or per-class items.
+      Note that "0 = never" breaks a plain keep-the-weakest rule.
+- [ ] `stig.password.min_length` · `SRG-APP-000164-NDM-000252` · `auth.password_min_length >= 15`.
+      Case: both checks state 15. The Cisco check reads `aaa common-criteria policy … min-length`, which
+      `cisco_ios.yaml` did not map: added as `ios.password_min_length.cc_policy`, weakest policy wins (`keep: min`).
+      Without it, a device configured exactly as the STIG says would FAIL.
+- [ ] `stig.ntp.two_servers` · `SRG-APP-000373-NDM-000298` · `length(ntp.servers) >= 2`, lower bound.
+      Case: the check asks for "redundant authoritative time sources" and shows two `ntp server` lines. Reading
+      "redundant" as "at least two configured" is ours. Server reachability is runtime state and out of scope
+      (ARCHITECTURE known limits).
+- [ ] `stig.aaa.two_servers` · `SRG-APP-000516-NDM-000336` · `length(auth.aaa.servers) >= 2`, lower bound.
+      Case: both titles say "at least two authentication servers". Partial: the STIG also requires that the
+      servers are the *primary* source in the login method list; we do not check method order.
+- [ ] **New canonical field `auth.aaa.servers[]`** (additive). Mapped from IOS `radius-server host` /
+      `tacacs-server host`, IOS named `radius|tacacs server NAME` + `address ipv4`, and Junos
+      `system radius-server` / `tacplus-server`. No line means a mapped empty list. No fixture configures a server,
+      so every device FAILs this rule today. That is a true finding on these configs, not a test of the mapping.
+- [ ] Source currency: the Juniper STIG used is V3R2 (Jan 2025); a newer release may exist. See the extract header.
