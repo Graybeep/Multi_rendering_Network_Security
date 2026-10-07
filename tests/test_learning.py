@@ -7,6 +7,7 @@ shipped mapping produced. The shipped pack is the ground truth; nothing is compa
 
 from __future__ import annotations
 
+import ast
 import subprocess
 import sys
 import time
@@ -140,8 +141,55 @@ def test_suggestions_match_the_contract_and_only_offer_learnable_fields(snapshot
         assert all(learnable(c["canonical_field"], catalogue) is None for c in candidates)
 
 
+def _learning_modules() -> list[str]:
+    return sorted(f"src.learning.{p.stem}" for p in (ROOT / "src" / "learning").glob("*.py") if p.stem != "__init__")
+
+
+def _imports(module: str) -> set[str]:
+    """Every `src.*` module a file names anywhere: top level, inside functions, or as an importlib string."""
+    path = ROOT / Path(*module.split("."))
+    path = path / "__init__.py" if path.is_dir() else path.with_suffix(".py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+            found.add(node.module)
+            found.update(f"{node.module}.{a.name}" for a in node.names)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.startswith("src."):
+            found.add(node.value)
+    return {m for m in found if m == "src" or m.startswith("src.")}
+
+
+def _resolves(module: str) -> bool:
+    base = ROOT / Path(*module.split("."))
+    return base.with_suffix(".py").is_file() or (base / "__init__.py").is_file()
+
+
 def test_learning_has_no_import_path_to_the_rules() -> None:
-    code = ("import sys, src.learning.normalise, src.learning.cluster, src.learning.rank, src.learning.author;"
+    """The AI boundary (src/CLAUDE.md): learning ranks candidates for a human; it can never reach a verdict.
+
+    Static, over every learning module (found by glob, so a new tier is covered), following `src.*` imports
+    transitively, including imports inside functions and importlib strings, which a runtime check misses.
+    """
+    assert _learning_modules(), "no learning modules found; the walk would pass vacuously"
+    seen: dict[str, str] = {}  # module -> the module that first imported it
+    todo = [(m, "<root>") for m in _learning_modules()]
+    while todo:
+        module, parent = todo.pop()
+        if module in seen or not _resolves(module):
+            continue
+        seen[module] = parent
+        todo.extend((m, module) for m in _imports(module))
+    reached = sorted(m for m in seen if m == "src.rules" or m.startswith("src.rules."))
+
+    def chain(m: str) -> str:
+        return m if seen[m] == "<root>" else f"{chain(seen[m])} -> {m}"
+
+    assert reached == [], "\n".join(chain(m) for m in reached)
+    # Runtime check as well: what importing every learning module actually loads.
+    code = (f"import sys, {', '.join(_learning_modules())};"
             "print(sorted(m for m in sys.modules if m.startswith('src.rules')))")
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]"
