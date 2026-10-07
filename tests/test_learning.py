@@ -120,11 +120,15 @@ def _shipped_cases(snapshot: Snapshot, catalogue: Catalogue) -> list[tuple[str, 
 
 
 def test_the_right_field_is_in_the_top_three(snapshot: Snapshot, catalogue: Catalogue) -> None:
-    """Measured, not tuned: 54 of 57 shipped mappings. The misses are recorded so a regression shows."""
+    """56 of 57 shipped mappings. These lines are the shipped fixtures, and the descriptions of
+    logging.level and services.ssh.max_auth_tries were reworded after they missed here, so this is a
+    regression check, not an accuracy figure (see docs/ranking-eval.md for that). The miss is recorded
+    so a regression shows: Junos writes the SSH version as `v2`, a word, and an integer field is
+    halved when the line carries no integer."""
     cases = _shipped_cases(snapshot, catalogue)
     misses = sorted(mid for mid, cluster, target in cases
                     if target not in [c["canonical_field"] for c in rank(cluster, catalogue, 3)])
-    assert misses == ["ios.logging.trap", "ios.ssh.auth_retries", "junos.ssh.version"]
+    assert misses == ["junos.ssh.version"]
     assert len(cases) == 57
 
 

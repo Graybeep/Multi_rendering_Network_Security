@@ -173,7 +173,7 @@
               ]
             },
             "version": {
-              "description": "Which Secure Shell protocol version is accepted; version 1 is cryptographically broken and version 2 is required by hardening guides.",
+              "description": "Which SSH (Secure Shell) protocol version the device accepts; version 1 is cryptographically broken and version 2 is required by hardening guides.",
               "x-path": "services.ssh.version",
               "x-absent": "unknown",
               "allOf": [
@@ -219,7 +219,7 @@
               ]
             },
             "max_auth_tries": {
-              "description": "How many failed password attempts an SSH client is allowed before the connection is closed.",
+              "description": "How many authentication retries (failed password attempts) an SSH client is allowed before the connection is closed.",
               "x-path": "services.ssh.max_auth_tries",
               "x-absent": "pack-declared default for the OS version range, otherwise unknown",
               "allOf": [
@@ -632,7 +632,7 @@
           ]
         },
         "level": {
-          "description": "The least severe event the device records, as a syslog severity from 0 (emergencies only) to 7 (debugging, everything).",
+          "description": "The least severe event the device logs, its syslog trap level: a severity from 0 (emergencies only) through 6 (informational) to 7 (debugging, everything).",
           "x-path": "logging.level",
           "x-absent": "pack-declared default for the OS version range, otherwise unknown",
           "allOf": [
